@@ -19,9 +19,11 @@
 package net.mcreator.workspace.elements;
 
 import com.google.gson.*;
+import net.mcreator.element.BaseType;
 import net.mcreator.element.GeneratableElement;
 import net.mcreator.element.ModElementType;
 import net.mcreator.element.ModElementTypeLoader;
+import net.mcreator.element.types.interfaces.ICommonType;
 import net.mcreator.element.types.interfaces.IMCItemProvider;
 import net.mcreator.generator.IGeneratorProvider;
 import net.mcreator.minecraft.MCItem;
@@ -38,8 +40,8 @@ import java.util.*;
 
 public class ModElement implements Serializable, IWorkspaceProvider, IGeneratorProvider, IElement {
 
-	private String name;
-	private String type;
+	private final String name;
+	private final String type;
 
 	private Integer sortid = null;
 
@@ -94,20 +96,13 @@ public class ModElement implements Serializable, IWorkspaceProvider, IGeneratorP
 		reinit(workspace);
 	}
 
+	/**
+	 * Warning: this method uses ModElementManager and is thus not thread safe
+	 *
+	 * @return GeneratableElement or null if load failed
+	 */
 	@Nullable public GeneratableElement getGeneratableElement() {
 		return this.workspace.getModElementManager().loadGeneratableElement(this);
-	}
-
-	public void loadDataFrom(ModElement other) {
-		this.type = other.type;
-		this.compiles = other.compiles;
-		this.locked_code = other.locked_code;
-		this.sortid = other.sortid;
-		this.registry_name = other.registry_name;
-		this.metadata = other.metadata;
-		this.mcItems = other.mcItems;
-		this.elementIcon = other.elementIcon;
-		this.workspace = other.workspace;
 	}
 
 	/**
@@ -200,10 +195,6 @@ public class ModElement implements Serializable, IWorkspaceProvider, IGeneratorP
 		return name;
 	}
 
-	public void setName(String name) {
-		this.name = name;
-	}
-
 	public ModElementType<?> getType() {
 		try {
 			return ModElementTypeLoader.getModElementType(type);
@@ -214,10 +205,6 @@ public class ModElement implements Serializable, IWorkspaceProvider, IGeneratorP
 
 	public String getTypeString() {
 		return type == null ? null : type.toLowerCase(Locale.ENGLISH);
-	}
-
-	public void setType(ModElementType<?> type) {
-		this.type = type.getRegistryName();
 	}
 
 	public boolean isCodeLocked() {
@@ -240,6 +227,9 @@ public class ModElement implements Serializable, IWorkspaceProvider, IGeneratorP
 		return sortid;
 	}
 
+	/**
+	 * Warning: this method relies on getGeneratableElement that is not thread safe, so this method is also not thread safe
+	 */
 	@Nonnull public synchronized List<MCItem> getMCItems() {
 		if (mcItems == null) {
 			mcItems = this.getGeneratableElement() instanceof IMCItemProvider provider ?
@@ -273,10 +263,40 @@ public class ModElement implements Serializable, IWorkspaceProvider, IGeneratorP
 	}
 
 	public void setParentFolder(@Nullable FolderElement parent) {
-		if (parent == null || parent.isRoot())
+		if (parent == null || parent.isRoot()) {
 			this.path = null;
-		else
-			this.path = parent.getPath();
+		} else {
+			// Make sure that the specified parent folder exists in the workspace
+			if (workspace.getFoldersRoot().getRecursiveFolderChildren().stream().anyMatch(e -> e.equals(parent))) {
+				this.path = parent.getPath();
+			} else {
+				this.path = null;
+			}
+		}
+	}
+
+	/**
+	 * Warning: this method relies on getGeneratableElement that is not thread safe, so this method is also not thread safe
+	 */
+	public Collection<BaseType> getBaseTypesProvided() {
+		return this.getGeneratableElement() instanceof ICommonType iCommonType ?
+				iCommonType.getBaseTypesProvided() :
+				Collections.emptyList();
+	}
+
+	/**
+	 * @param other The mod element to copy settings from.
+	 * @apiNote This method performs sensitive operations on this mod element. Avoid using it!
+	 */
+	@SuppressWarnings("unused") public void loadDataFrom(ModElement other) {
+		this.compiles = other.compiles;
+		this.locked_code = other.locked_code;
+		this.sortid = other.sortid;
+		this.registry_name = other.registry_name;
+		this.metadata = other.metadata;
+		this.mcItems = other.mcItems;
+		this.elementIcon = other.elementIcon;
+		this.workspace = other.workspace;
 	}
 
 	public static class ModElementDeserializer implements JsonDeserializer<ModElement> {

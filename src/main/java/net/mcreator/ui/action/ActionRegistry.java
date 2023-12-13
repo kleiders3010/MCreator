@@ -23,10 +23,7 @@ import net.mcreator.ui.MCreatorApplication;
 import net.mcreator.ui.action.impl.*;
 import net.mcreator.ui.action.impl.gradle.*;
 import net.mcreator.ui.action.impl.workspace.*;
-import net.mcreator.ui.action.impl.workspace.resources.ImportSoundAction;
-import net.mcreator.ui.action.impl.workspace.resources.ModelImportActions;
-import net.mcreator.ui.action.impl.workspace.resources.StructureImportActions;
-import net.mcreator.ui.action.impl.workspace.resources.TextureAction;
+import net.mcreator.ui.action.impl.workspace.resources.*;
 import net.mcreator.ui.browser.action.*;
 import net.mcreator.ui.dialogs.TextureImportDialogs;
 import net.mcreator.ui.dialogs.imageeditor.NewImageDialog;
@@ -37,10 +34,7 @@ import net.mcreator.ui.init.L10N;
 import net.mcreator.ui.init.UIRES;
 import net.mcreator.ui.views.AnimationMakerView;
 import net.mcreator.ui.views.ArmorImageMakerView;
-import net.mcreator.ui.views.editor.image.action.ImageEditorRedoAction;
-import net.mcreator.ui.views.editor.image.action.ImageEditorSaveAction;
-import net.mcreator.ui.views.editor.image.action.ImageEditorSaveAsAction;
-import net.mcreator.ui.views.editor.image.action.ImageEditorUndoAction;
+import net.mcreator.ui.views.editor.image.action.*;
 import net.mcreator.ui.views.editor.image.tool.action.*;
 import net.mcreator.ui.workspace.resources.TextureType;
 import net.mcreator.util.DesktopUtils;
@@ -166,6 +160,11 @@ public class ActionRegistry {
 	public final BasicAction imageEditorRedo;
 	public final BasicAction imageEditorSave;
 	public final BasicAction imageEditorSaveAs;
+	public final ImageEditorCopyAction imageEditorCopy;
+	public final ImageEditorCopyAllAction imageEditorCopyAll;
+	public final ImageEditorCutAction imageEditorCut;
+	public final ImageEditorPasteAction imageEditorPaste;
+	public final ImageEditorDeleteAction imageEditorDelete;
 	public final BasicAction imageEditorPencil;
 	public final BasicAction imageEditorLine;
 	public final BasicAction imageEditorShape;
@@ -177,6 +176,8 @@ public class ActionRegistry {
 	public final BasicAction imageEditorDesaturate;
 	public final BasicAction imageEditorHSVNoise;
 	public final BasicAction imageEditorMoveLayer;
+	public final BasicAction imageEditorSelectLayer;
+	public final ImageEditorClearSelectionAction imageEditorClearSelection;
 	public final BasicAction imageEditorResizeLayer;
 	public final BasicAction imageEditorResizeCanvas;
 
@@ -235,35 +236,29 @@ public class ActionRegistry {
 			newImageDialog.setVisible(true);
 		}).setIcon(UIRES.get("16px.newtexture"));
 		this.createArmorTexture = new TextureAction(this, L10N.t("action.create_armor_texture"),
-				actionEvent -> new ArmorImageMakerView(mcreator).showView()).setIcon(UIRES.get("16px.newarmor"));
+				actionEvent -> new ArmorImageMakerView(mcreator).showView(), TextureType.ARMOR).setIcon(
+				UIRES.get("16px.newarmor"));
 		this.createAnimatedTexture = new TextureAction(this, L10N.t("action.create_animated_texture"),
 				actionEvent -> new AnimationMakerView(mcreator).showView()).setIcon(UIRES.get("16px.newanimation"));
-		this.importBlockTexture = new TextureAction(this, L10N.t("action.import_block_texture"),
-				actionEvent -> TextureImportDialogs.importMultipleTextures(mcreator, TextureType.BLOCK)).setIcon(
-				UIRES.get("16px.importblock"));
-		this.importItemTexture = new TextureAction(this, L10N.t("action.import_item_texture"),
-				actionEvent -> TextureImportDialogs.importMultipleTextures(mcreator, TextureType.ITEM)).setIcon(
-				UIRES.get("16px.importitem"));
-		this.importEntityTexture = new TextureAction(this, L10N.t("action.import_entity_texture"),
-				actionEvent -> TextureImportDialogs.importMultipleTextures(mcreator, TextureType.ENTITY)).setIcon(
-				UIRES.get("16px.importentity"));
-		this.importEffectTexture = new TextureAction(this, L10N.t("action.import_effect_texture"),
-				actionEvent -> TextureImportDialogs.importMultipleTextures(mcreator, TextureType.EFFECT)).setIcon(
-				UIRES.get("16px.importeffect"));
-		this.importParticleTexture = new TextureAction(this, L10N.t("action.import_particle_texture"),
-				actionEvent -> TextureImportDialogs.importMultipleTextures(mcreator, TextureType.PARTICLE)).setIcon(
-				UIRES.get("16px.importparticle"));
-		this.importScreenTexture = new TextureAction(this, L10N.t("action.import_screen_texture"),
-				actionEvent -> TextureImportDialogs.importMultipleTextures(mcreator, TextureType.SCREEN)).setIcon(
-				UIRES.get("16px.importgui"));
+		this.importBlockTexture = new TextureImportAction(this, L10N.t("action.import_block_texture"),
+				TextureType.BLOCK).setIcon(UIRES.get("16px.importblock"));
+		this.importItemTexture = new TextureImportAction(this, L10N.t("action.import_item_texture"),
+				TextureType.ITEM).setIcon(UIRES.get("16px.importitem"));
+		this.importEntityTexture = new TextureImportAction(this, L10N.t("action.import_entity_texture"),
+				TextureType.ENTITY).setIcon(UIRES.get("16px.importentity"));
+		this.importEffectTexture = new TextureImportAction(this, L10N.t("action.import_effect_texture"),
+				TextureType.EFFECT).setIcon(UIRES.get("16px.importeffect"));
+		this.importParticleTexture = new TextureImportAction(this, L10N.t("action.import_particle_texture"),
+				TextureType.PARTICLE).setIcon(UIRES.get("16px.importparticle"));
+		this.importScreenTexture = new TextureImportAction(this, L10N.t("action.import_screen_texture"),
+				TextureType.SCREEN).setIcon(UIRES.get("16px.importgui"));
 		this.importArmorTexture = new TextureAction(this, L10N.t("action.import_armor_texture"), actionEvent -> {
 			TextureImportDialogs.importArmor(mcreator);
 			mcreator.mv.resourcesPan.workspacePanelTextures.reloadElements();
-		}).setIcon(UIRES.get("16px.importarmor"));
-		this.importOtherTexture = new TextureAction(this, L10N.t("action.import_other_texture"),
-				actionEvent -> TextureImportDialogs.importMultipleTextures(mcreator, TextureType.OTHER)).setIcon(
-				UIRES.get("16px.importtexture"));
-		this.importSound = new ImportSoundAction(this);
+		}, TextureType.ARMOR).setIcon(UIRES.get("16px.importarmor"));
+		this.importOtherTexture = new TextureImportAction(this, L10N.t("action.import_other_texture"),
+				TextureType.OTHER).setIcon(UIRES.get("16px.importtexture"));
+		this.importSound = new SoundImportAction(this);
 		this.importStructure = new StructureImportActions.ImportStructure(this).setIcon(
 				UIRES.get("16px.importstructure"));
 		this.importStructureFromMinecraft = new StructureImportActions.ImportStructureFromMinecraft(this);
@@ -317,6 +312,11 @@ public class ActionRegistry {
 		//Image Editor actions
 		this.imageEditorUndo = new ImageEditorUndoAction(this);
 		this.imageEditorRedo = new ImageEditorRedoAction(this);
+		this.imageEditorCopy = new ImageEditorCopyAction(this);
+		this.imageEditorCopyAll = new ImageEditorCopyAllAction(this);
+		this.imageEditorCut = new ImageEditorCutAction(this);
+		this.imageEditorPaste = new ImageEditorPasteAction(this);
+		this.imageEditorDelete = new ImageEditorDeleteAction(this);
 		this.imageEditorSave = new ImageEditorSaveAction(this);
 		this.imageEditorSaveAs = new ImageEditorSaveAsAction(this);
 		this.imageEditorPencil = new PencilToolAction(this);
@@ -330,6 +330,8 @@ public class ActionRegistry {
 		this.imageEditorDesaturate = new DesaturateToolAction(this);
 		this.imageEditorHSVNoise = new HSVNoiseToolAction(this);
 		this.imageEditorMoveLayer = new MoveToolAction(this);
+		this.imageEditorSelectLayer = new SelectionToolAction(this);
+		this.imageEditorClearSelection = new ImageEditorClearSelectionAction(this);
 		this.imageEditorResizeLayer = new ResizeToolAction(this);
 		this.imageEditorResizeCanvas = new ResizeCanvasToolAction(this);
 

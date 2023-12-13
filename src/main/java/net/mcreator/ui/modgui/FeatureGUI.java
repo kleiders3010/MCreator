@@ -32,36 +32,40 @@ import net.mcreator.generator.blockly.ProceduralBlockCodeGenerator;
 import net.mcreator.generator.template.TemplateGeneratorException;
 import net.mcreator.minecraft.ElementUtil;
 import net.mcreator.ui.MCreator;
+import net.mcreator.ui.MCreatorApplication;
 import net.mcreator.ui.blockly.BlocklyEditorToolbar;
 import net.mcreator.ui.blockly.BlocklyEditorType;
 import net.mcreator.ui.blockly.BlocklyPanel;
 import net.mcreator.ui.blockly.CompileNotesPanel;
 import net.mcreator.ui.component.JEmptyBox;
-import net.mcreator.ui.component.util.ComboBoxUtil;
 import net.mcreator.ui.component.util.PanelUtils;
 import net.mcreator.ui.help.HelpUtils;
 import net.mcreator.ui.init.L10N;
+import net.mcreator.ui.laf.themes.Theme;
 import net.mcreator.ui.minecraft.BiomeListField;
-import net.mcreator.ui.minecraft.DimensionListField;
 import net.mcreator.ui.procedure.ProcedureSelector;
 import net.mcreator.ui.validation.AggregatedValidationResult;
+import net.mcreator.ui.validation.validators.ItemListFieldSingleTagValidator;
 import net.mcreator.workspace.elements.ModElement;
 import net.mcreator.workspace.elements.VariableTypeLoader;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
 import java.awt.*;
-import java.util.Arrays;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class FeatureGUI extends ModElementGUI<Feature> {
+public class FeatureGUI extends ModElementGUI<Feature> implements IBlocklyPanelHolder {
+
 	private ProcedureSelector generateCondition;
 	private BiomeListField restrictionBiomes;
-	private DimensionListField restrictionDimensions;
-	private final JComboBox<String> generationStep = new JComboBox<>();
+	private final JComboBox<String> generationStep = new JComboBox<>(
+			ElementUtil.getDataListAsStringArray("generationsteps"));
 
 	private BlocklyPanel blocklyPanel;
 	private final CompileNotesPanel compileNotesPanel = new CompileNotesPanel();
@@ -80,22 +84,19 @@ public class FeatureGUI extends ModElementGUI<Feature> {
 				Dependency.fromString("x:number/y:number/z:number/world:world")).setDefaultName(
 				L10N.t("condition.common.no_additional")).makeInline();
 
-		restrictionBiomes = new BiomeListField(mcreator);
-		restrictionBiomes.setPreferredSize(new Dimension(380, -1));
+		if (!isEditingMode())
+			generationStep.setSelectedItem("SURFACE_STRUCTURES");
 
-		restrictionDimensions = new DimensionListField(mcreator);
+		restrictionBiomes = new BiomeListField(mcreator, true);
+		restrictionBiomes.setValidator(new ItemListFieldSingleTagValidator(restrictionBiomes));
 		restrictionBiomes.setPreferredSize(new Dimension(380, -1));
 
 		JPanel page1 = new JPanel(new BorderLayout(10, 10));
-		JPanel properties = new JPanel(new GridLayout(3, 2, 4, 2));
+		JPanel properties = new JPanel(new GridLayout(2, 2, 4, 2));
 
 		properties.add(HelpUtils.wrapWithHelpButton(this.withEntry("feature/generation_stage"),
 				L10N.label("elementgui.feature.generation_stage")));
 		properties.add(generationStep);
-
-		properties.add(HelpUtils.wrapWithHelpButton(this.withEntry("feature/restrict_to_dimensions"),
-				L10N.label("elementgui.feature.restrict_to_dimensions")));
-		properties.add(restrictionDimensions);
 
 		properties.add(HelpUtils.wrapWithHelpButton(this.withEntry("common/restrict_to_biomes"),
 				L10N.label("elementgui.common.restrict_to_biomes")));
@@ -113,8 +114,8 @@ public class FeatureGUI extends ModElementGUI<Feature> {
 		blocklyPanel.addTaskToRunAfterLoaded(() -> {
 			BlocklyLoader.INSTANCE.getBlockLoader(BlocklyEditorType.FEATURE)
 					.loadBlocksAndCategoriesInPanel(blocklyPanel, ToolboxType.FEATURE);
-			blocklyPanel.getJSBridge()
-					.setJavaScriptEventListener(() -> new Thread(FeatureGUI.this::regenerateFeature).start());
+			blocklyPanel.getJSBridge().setJavaScriptEventListener(
+					() -> new Thread(FeatureGUI.this::regenerateFeature, "FeatureRegenerate").start());
 			if (!isEditingMode()) {
 				blocklyPanel.setXML(Feature.XML_BASE);
 			}
@@ -129,7 +130,7 @@ public class FeatureGUI extends ModElementGUI<Feature> {
 
 		JPanel featureProcedure = (JPanel) PanelUtils.centerAndSouthElement(blocklyAndToolbarPanel, compileNotesPanel);
 		featureProcedure.setBorder(BorderFactory.createTitledBorder(
-				BorderFactory.createLineBorder((Color) UIManager.get("MCreatorLAF.BRIGHT_COLOR"), 1),
+				BorderFactory.createLineBorder(Theme.current().getForegroundColor(), 1),
 				L10N.t("elementgui.feature.feature_builder"), TitledBorder.LEADING, TitledBorder.DEFAULT_POSITION,
 				getFont(), Color.white));
 
@@ -174,19 +175,16 @@ public class FeatureGUI extends ModElementGUI<Feature> {
 				new AggregatedValidationResult.MULTIFAIL(
 						compileNotesPanel.getCompileNotes().stream().map(BlocklyCompileNote::message)
 								.collect(Collectors.toList())) :
-				new AggregatedValidationResult.PASS();
+				new AggregatedValidationResult(restrictionBiomes);
 	}
 
 	@Override public void reloadDataLists() {
 		super.reloadDataLists();
-		ComboBoxUtil.updateComboBoxContents(generationStep,
-				Arrays.asList(ElementUtil.getDataListAsStringArray("generationsteps")), "SURFACE_STRUCTURES");
 		generateCondition.refreshListKeepSelected();
 	}
 
 	@Override protected void openInEditingMode(Feature feature) {
 		generationStep.setSelectedItem(feature.generationStep);
-		restrictionDimensions.setListElements(feature.restrictionDimensions);
 		restrictionBiomes.setListElements(feature.restrictionBiomes);
 		generateCondition.setSelectedProcedure(feature.generateCondition);
 
@@ -201,7 +199,6 @@ public class FeatureGUI extends ModElementGUI<Feature> {
 	@Override public Feature getElementFromGUI() {
 		Feature feature = new Feature(modElement);
 		feature.generationStep = (String) generationStep.getSelectedItem();
-		feature.restrictionDimensions = restrictionDimensions.getListElements();
 		feature.restrictionBiomes = restrictionBiomes.getListElements();
 		feature.generateCondition = generateCondition.getSelectedProcedure();
 
@@ -209,4 +206,13 @@ public class FeatureGUI extends ModElementGUI<Feature> {
 
 		return feature;
 	}
+
+	@Override public List<BlocklyPanel> getBlocklyPanels() {
+		return List.of(blocklyPanel);
+	}
+
+	@Override public @Nullable URI contextURL() throws URISyntaxException {
+		return new URI(MCreatorApplication.SERVER_DOMAIN + "/wiki/how-make-feature");
+	}
+
 }

@@ -37,6 +37,7 @@ import net.mcreator.ui.component.util.ComponentUtils;
 import net.mcreator.ui.component.util.PanelUtils;
 import net.mcreator.ui.help.HelpUtils;
 import net.mcreator.ui.init.L10N;
+import net.mcreator.ui.laf.themes.Theme;
 import net.mcreator.ui.validation.AggregatedValidationResult;
 import net.mcreator.ui.validation.ValidationGroup;
 import net.mcreator.ui.validation.component.VTextField;
@@ -54,9 +55,11 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class CommandGUI extends ModElementGUI<Command> {
+public class CommandGUI extends ModElementGUI<Command> implements IBlocklyPanelHolder {
 
 	private final VTextField commandName = new VTextField(25);
+	private final JComboBox<String> type = new JComboBox<>(
+			new String[] { "STANDARD", "SINGLEPLAYER_ONLY", "MULTIPLAYER_ONLY", "CLIENTSIDE" });
 	private final JComboBox<String> permissionLevel = new JComboBox<>(
 			new String[] { "No requirement", "1", "2", "3", "4" });
 	private final CompileNotesPanel compileNotesPanel = new CompileNotesPanel();
@@ -74,11 +77,15 @@ public class CommandGUI extends ModElementGUI<Command> {
 	@Override protected void initGUI() {
 		ComponentUtils.deriveFont(commandName, 16);
 
-		JPanel enderpanel = new JPanel(new GridLayout(2, 2, 10, 2));
+		JPanel enderpanel = new JPanel(new GridLayout(3, 2, 10, 2));
 
 		enderpanel.add(
 				HelpUtils.wrapWithHelpButton(this.withEntry("command/name"), L10N.label("elementgui.command.name")));
 		enderpanel.add(commandName);
+
+		enderpanel.add(
+				HelpUtils.wrapWithHelpButton(this.withEntry("command/type"), L10N.label("elementgui.command.type")));
+		enderpanel.add(type);
 
 		enderpanel.add(HelpUtils.wrapWithHelpButton(this.withEntry("command/permission_level"),
 				L10N.label("elementgui.command.permission_level")));
@@ -92,8 +99,8 @@ public class CommandGUI extends ModElementGUI<Command> {
 		blocklyPanel.addTaskToRunAfterLoaded(() -> {
 			BlocklyLoader.INSTANCE.getBlockLoader(BlocklyEditorType.COMMAND_ARG)
 					.loadBlocksAndCategoriesInPanel(blocklyPanel, ToolboxType.COMMAND);
-			blocklyPanel.getJSBridge()
-					.setJavaScriptEventListener(() -> new Thread(CommandGUI.this::regenerateArgs).start());
+			blocklyPanel.getJSBridge().setJavaScriptEventListener(
+					() -> new Thread(CommandGUI.this::regenerateArgs, "CommandRegenerate").start());
 			if (!isEditingMode()) {
 				blocklyPanel.setXML(Command.XML_BASE);
 			}
@@ -105,9 +112,9 @@ public class CommandGUI extends ModElementGUI<Command> {
 						new BlocklyEditorToolbar(mcreator, BlocklyEditorType.COMMAND_ARG, blocklyPanel), blocklyPanel),
 				compileNotesPanel);
 		args.setBorder(BorderFactory.createTitledBorder(
-				BorderFactory.createLineBorder((Color) UIManager.get("MCreatorLAF.BRIGHT_COLOR"), 1),
+				BorderFactory.createLineBorder(Theme.current().getForegroundColor(), 1),
 				L10N.t("elementgui.command.arguments"), TitledBorder.LEADING, TitledBorder.DEFAULT_POSITION, getFont(),
-				(Color) UIManager.get("MCreatorLAF.BRIGHT_COLOR")));
+				Theme.current().getForegroundColor()));
 		args.setOpaque(false);
 
 		commandName.setValidator(
@@ -154,6 +161,7 @@ public class CommandGUI extends ModElementGUI<Command> {
 
 	@Override public void openInEditingMode(Command command) {
 		commandName.setText(command.commandName);
+		type.setSelectedItem(command.type);
 		permissionLevel.setSelectedItem(command.permissionLevel);
 
 		blocklyPanel.setXMLDataOnly(command.argsxml);
@@ -167,6 +175,8 @@ public class CommandGUI extends ModElementGUI<Command> {
 	@Override public Command getElementFromGUI() {
 		Command command = new Command(modElement);
 		command.commandName = commandName.getText();
+		command.type = (String) type.getSelectedItem();
+
 		command.permissionLevel = (String) permissionLevel.getSelectedItem();
 		command.argsxml = blocklyPanel.getXML();
 		return command;
@@ -174,6 +184,10 @@ public class CommandGUI extends ModElementGUI<Command> {
 
 	@Override public @Nullable URI contextURL() throws URISyntaxException {
 		return new URI(MCreatorApplication.SERVER_DOMAIN + "/wiki/making-command");
+	}
+
+	@Override public List<BlocklyPanel> getBlocklyPanels() {
+		return List.of(blocklyPanel);
 	}
 
 }

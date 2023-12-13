@@ -22,16 +22,19 @@ package net.mcreator.integration.ui;
 import net.mcreator.element.GeneratableElement;
 import net.mcreator.element.ModElementType;
 import net.mcreator.element.ModElementTypeLoader;
+import net.mcreator.element.parts.IWorkspaceDependent;
 import net.mcreator.generator.Generator;
 import net.mcreator.generator.GeneratorConfiguration;
 import net.mcreator.generator.GeneratorFlavor;
-import net.mcreator.integration.TestSetup;
+import net.mcreator.integration.IntegrationTestSetup;
 import net.mcreator.integration.TestWorkspaceDataProvider;
+import net.mcreator.integration.generator.GTSampleElements;
 import net.mcreator.preferences.PreferencesManager;
 import net.mcreator.ui.MCreator;
 import net.mcreator.ui.blockly.BlocklyPanel;
 import net.mcreator.ui.init.L10N;
 import net.mcreator.ui.modgui.ModElementGUI;
+import net.mcreator.ui.validation.AggregatedValidationResult;
 import net.mcreator.workspace.Workspace;
 import net.mcreator.workspace.elements.ModElement;
 import net.mcreator.workspace.settings.WorkspaceSettings;
@@ -39,6 +42,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.io.File;
 import java.io.IOException;
@@ -47,24 +51,21 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Random;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assertions.*;
 
-public class ModElementUITest {
+@ExtendWith(IntegrationTestSetup.class) public class ModElementUITest {
 
-	private static Logger LOG;
+	private static Logger LOG = LogManager.getLogger("Mod Element Test");
 
 	private static Workspace workspace;
 	private static MCreator mcreator;
 
 	@BeforeAll public static void initTest() throws IOException {
-		System.setProperty("log_directory", System.getProperty("java.io.tmpdir"));
-		LOG = LogManager.getLogger("Mod Element Test");
-
-		TestSetup.setupIntegrationTestEnvironment();
-
 		// create temporary directory
 		Path tempDirWithPrefix = Files.createTempDirectory("mcreator_test_workspace");
 
@@ -84,49 +85,7 @@ public class ModElementUITest {
 		mcreator = new MCreator(null, workspace);
 
 		TestWorkspaceDataProvider.fillWorkspaceWithTestData(workspace);
-
-		// generate some "dummy" procedures for dropdowns to work
-		for (int i = 1; i <= 15; i++) {
-			workspace.addModElement(
-					new ModElement(workspace, "procedure" + i, ModElementType.PROCEDURE).putMetadata("dependencies",
-							new ArrayList<String>()));
-		}
-
-		for (int i = 1; i <= 4; i++) {
-			workspace.addModElement(
-					new ModElement(workspace, "condition" + i, ModElementType.PROCEDURE).putMetadata("dependencies",
-							new ArrayList<String>()).putMetadata("return_type", "LOGIC"));
-		}
-
-		for (int i = 1; i <= 2; i++) {
-			workspace.addModElement(
-					new ModElement(workspace, "number" + i, ModElementType.PROCEDURE).putMetadata("dependencies",
-							new ArrayList<String>()).putMetadata("return_type", "NUMBER"));
-		}
-
-		for (int i = 1; i <= 2; i++) {
-			workspace.addModElement(
-					new ModElement(workspace, "string" + i, ModElementType.PROCEDURE).putMetadata("dependencies",
-							new ArrayList<String>()).putMetadata("return_type", "STRING"));
-		}
-
-		for (int i = 1; i <= 2; i++) {
-			workspace.addModElement(
-					new ModElement(workspace, "itemstack" + i, ModElementType.PROCEDURE).putMetadata("dependencies",
-							new ArrayList<String>()).putMetadata("return_type", "ITEMSTACK"));
-		}
-
-		for (int i = 1; i <= 1; i++) {
-			workspace.addModElement(
-					new ModElement(workspace, "actionresulttype" + i, ModElementType.PROCEDURE).putMetadata(
-							"dependencies", new ArrayList<String>()).putMetadata("return_type", "ACTIONRESULTTYPE"));
-		}
-
-		for (int i = 1; i <= 1; i++) {
-			workspace.addModElement(
-					new ModElement(workspace, "entity" + i, ModElementType.PROCEDURE).putMetadata("dependencies",
-							new ArrayList<String>()).putMetadata("return_type", "ENTITY"));
-		}
+		GTSampleElements.provideAndGenerateSampleElements(new Random(), workspace);
 
 		// reduce autosave interval for tests
 		PreferencesManager.PREFERENCES.backups.workspaceAutosaveInterval.set(2000);
@@ -152,9 +111,9 @@ public class ModElementUITest {
 		Random random = new Random(rgenseed);
 		LOG.info("Random number generator seed: " + rgenseed);
 
-		PreferencesManager.PREFERENCES.ui.language.set(L10N.getSupportedLocales().stream()
-				.filter(locale -> locale != L10N.DEFAULT_LOCALE)
-				.max(Comparator.comparingInt(L10N::getUITextsLocaleSupport)).orElse(null));
+		PreferencesManager.PREFERENCES.ui.language.set(
+				L10N.getSupportedLocales().stream().filter(locale -> locale != L10N.DEFAULT_LOCALE)
+						.max(Comparator.comparingInt(L10N::getUITextsLocaleSupport)).orElse(null));
 		L10N.initTranslations();
 
 		LOG.info("Testing mod element GUI for locale " + PreferencesManager.PREFERENCES.ui.language.get());
@@ -166,6 +125,9 @@ public class ModElementUITest {
 			throws NoSuchMethodException, InvocationTargetException, IllegalAccessException, NoSuchFieldException,
 			InterruptedException {
 		for (ModElementType<?> modElementType : ModElementTypeLoader.REGISTRY) {
+
+			if (modElementType == ModElementType.CODE)
+				continue; // does not have regular handling so skip it
 
 			List<GeneratableElement> generatableElements = TestWorkspaceDataProvider.getModElementExamplesFor(workspace,
 					modElementType, true, random);
@@ -183,17 +145,16 @@ public class ModElementUITest {
 
 				// back to GeneratableElement
 				generatableElement = workspace.getModElementManager()
-						.fromJSONtoGeneratableElement(exportedJSON, modElement);// from JSON to generatableelement
+						.fromJSONtoGeneratableElement(exportedJSON, modElement);// from JSON to GeneratableElement
 
-				if (generatableElement == null) {
-					LOG.warn("This mod element type does not support generatable elements: " + modElement.getType()
-							.getReadableName());
-					continue;
-				}
+				// Check if all workspace fields are not null after re-import
+				IWorkspaceDependent.processWorkspaceDependentObjects(generatableElement,
+						workspaceDependent -> assertNotNull(workspaceDependent.getWorkspace()));
+
+				assertNotNull(generatableElement);
 
 				ModElementGUI<?> modElementGUI = modElementType.getModElementGUI(mcreator, modElement, false);
-
-				modElementGUI.showView();
+				modElementGUI.reloadDataLists();
 
 				Field field = modElementGUI.getClass().getSuperclass().getDeclaredField("editingMode");
 				field.setAccessible(true);
@@ -214,8 +175,19 @@ public class ModElementUITest {
 				// test if data remains the same after reloading the data lists
 				modElementGUI.reloadDataLists();
 
+				// test if UI validation is error free (skip advancement and feature as provider provides empty Blockly setup)
+				AggregatedValidationResult validationResult = modElementGUI.validateAllPages();
+				if ((modElement.getType() != ModElementType.ADVANCEMENT
+						&& modElement.getType() != ModElementType.FEATURE) && !validationResult.validateIsErrorFree()) {
+					fail(String.join(",", validationResult.getValidationProblemMessages()));
+				}
+
 				// test UI -> GeneratableElement
 				generatableElement = modElementGUI.getElementFromGUI();
+
+				// Check if all workspace fields are not null after reading from GUI
+				IWorkspaceDependent.processWorkspaceDependentObjects(generatableElement,
+						workspaceDependent -> assertNotNull(workspaceDependent.getWorkspace()));
 
 				// compare GeneratableElements, no fields should change in the process
 				String exportedJSON2 = workspace.getModElementManager().generatableElementToJSON(generatableElement);

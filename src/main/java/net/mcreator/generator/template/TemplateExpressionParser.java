@@ -20,13 +20,12 @@ package net.mcreator.generator.template;
 
 import freemarker.template.Template;
 import net.mcreator.generator.Generator;
+import org.apache.commons.io.output.NullWriter;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.io.StringReader;
-import java.io.StringWriter;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -34,7 +33,8 @@ public class TemplateExpressionParser {
 
 	private static final Logger LOG = LogManager.getLogger("Template expression parser");
 
-	public static boolean shouldSkipTemplateBasedOnCondition(@Nonnull Generator generator, @Nonnull Map<?, ?> template, @Nullable Object conditionDataProvider) {
+	public static boolean shouldSkipTemplateBasedOnCondition(@Nonnull Generator generator, @Nonnull Map<?, ?> template,
+			@Nullable Object conditionDataProvider) {
 		Operator operator = Operator.AND;
 		Object conditionRaw = template.get("condition");
 		if (conditionRaw == null) {
@@ -122,9 +122,8 @@ public class TemplateExpressionParser {
 			dataModel.put("data", dataHolder);
 			dataModel.put("_retVal", retVal);
 
-			Template t = new Template("INLINE EXPRESSION", new StringReader("${_retVal.set(" + expression + ")}"),
-					generator.getGeneratorConfiguration().getTemplateGenConfigFromName("templates").getConfiguration());
-			t.process(dataModel, new StringWriter(),
+			Template t = InlineTemplatesHandler.getTemplate("${_retVal.set(" + expression + ")}");
+			t.process(dataModel, NullWriter.INSTANCE,
 					generator.getGeneratorConfiguration().getTemplateGenConfigFromName("templates").getBeansWrapper());
 
 			return retVal.get();

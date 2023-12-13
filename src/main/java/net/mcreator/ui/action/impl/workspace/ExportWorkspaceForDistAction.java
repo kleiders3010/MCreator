@@ -77,6 +77,7 @@ public class ExportWorkspaceForDistAction extends GradleAction {
 		actionRegistry.getMCreator().getGradleConsole().exec(task, taskResult -> {
 			String exportFile = actionRegistry.getMCreator().getGeneratorConfiguration()
 					.getGradleTaskFor("export_file");
+			String exportExtension = FilenameUtilsPatched.getExtension(exportFile);
 
 			if (new File(actionRegistry.getMCreator().getWorkspaceFolder(), exportFile).isFile()) {
 				Object[] options2 = { L10N.t("dialog.workspace.export.option.just_export"),
@@ -84,16 +85,19 @@ public class ExportWorkspaceForDistAction extends GradleAction {
 						UIManager.getString("OptionPane.cancelButtonText") };
 				int n = JOptionPane.showOptionDialog(actionRegistry.getMCreator(),
 						L10N.t("dialog.workspace.export.message"), L10N.t("dialog.workspace.export.title"),
-						JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE, UIRES.get("export_donate"), options2,
-						options2[1]);
+						JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE, UIRES.get("export_donate"),
+						options2, options2[1]);
 				if (n == 2 || n == JOptionPane.CLOSED_OPTION) {
 					return;
 				} else if (n == 1) {
 					DesktopUtils.browseSafe(MCreatorApplication.SERVER_DOMAIN + "/donate");
 				}
 
-				File loc = FileDialogs.getSaveDialog(actionRegistry.getMCreator(),
-						new String[] { "." + FilenameUtilsPatched.getExtension(exportFile) });
+				String suggestedFileName = actionRegistry.getMCreator().getWorkspaceSettings().getModID() + "-"
+						+ actionRegistry.getMCreator().getWorkspaceSettings().getVersion() + "." + exportExtension;
+
+				File loc = FileDialogs.getSaveDialog(actionRegistry.getMCreator(), suggestedFileName,
+						new String[] { "." + exportExtension });
 				if (loc != null) {
 					actionRegistry.getMCreator().getApplication().getAnalytics()
 							.trackEvent(AnalyticsConstants.EVENT_EXPORT_FOR_DIST, task);

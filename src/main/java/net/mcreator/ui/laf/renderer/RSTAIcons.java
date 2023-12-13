@@ -21,6 +21,8 @@ package net.mcreator.ui.laf.renderer;
 
 import net.mcreator.ui.init.UIRES;
 import org.apache.commons.io.FilenameUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.fife.rsta.ac.java.DecoratableIcon;
 
 import javax.swing.*;
@@ -30,6 +32,8 @@ import java.util.List;
 import java.util.Map;
 
 public class RSTAIcons {
+
+	private static final Logger LOG = LogManager.getLogger("RSTA icons");
 
 	private static final Map<Icon, Icon> lookup_cache = new IdentityHashMap<>();
 
@@ -55,49 +59,45 @@ public class RSTAIcons {
 	}
 
 	public static Icon rstaIconToThemeIcon(DecoratableIcon icon) {
-		if (lookup_cache.containsKey(icon))
-			return lookup_cache.get(icon);
+		return lookup_cache.computeIfAbsent(icon, key -> {
+			try {
+				Class<?> decoratableIconClass = Class.forName("org.fife.rsta.ac.java.DecoratableIcon");
 
-		try {
-			Class<?> decoratableIconClass = Class.forName("org.fife.rsta.ac.java.DecoratableIcon");
+				Field mainIconFiled = decoratableIconClass.getDeclaredField("mainIcon");
+				mainIconFiled.setAccessible(true);
+				Icon mainIcon = (Icon) mainIconFiled.get(key);
 
-			Field mainIconFiled = decoratableIconClass.getDeclaredField("mainIcon");
-			mainIconFiled.setAccessible(true);
-			Icon mainIcon = (Icon) mainIconFiled.get(icon);
+				DecoratableIcon newIcon;
+				if (mainIcon instanceof DecoratableIcon decoratableIcon) {
+					newIcon = new DecoratableIcon(rstaIconToThemeIcon(decoratableIcon));
+				} else if (mainIcon instanceof ImageIcon imageIcon) {
+					newIcon = new DecoratableIcon(rstaIconToThemeIcon(imageIcon));
+				} else {
+					newIcon = new DecoratableIcon(mainIcon);
+				}
 
-			DecoratableIcon newIcon;
-			if (mainIcon instanceof DecoratableIcon decoratableIcon) {
-				newIcon = new DecoratableIcon(rstaIconToThemeIcon(decoratableIcon));
-			} else if (mainIcon instanceof ImageIcon imageIcon) {
-				newIcon = new DecoratableIcon(rstaIconToThemeIcon(imageIcon));
-			} else {
-				newIcon = new DecoratableIcon(mainIcon);
-			}
+				Field decorationsFiled = decoratableIconClass.getDeclaredField("decorations");
+				decorationsFiled.setAccessible(true);
+				List<?> decorationsList = (List<?>) decorationsFiled.get(key);
 
-			Field decorationsFiled = decoratableIconClass.getDeclaredField("decorations");
-			decorationsFiled.setAccessible(true);
-			List<?> decorationsList = (List<?>) decorationsFiled.get(icon);
-
-			if (decorationsList != null) {
-				for (Object obj : decorationsList) {
-					if (obj instanceof DecoratableIcon decoratableIcon) {
-						newIcon.addDecorationIcon(rstaIconToThemeIcon(decoratableIcon));
-					} else if (obj instanceof ImageIcon imageIcon) {
-						newIcon.addDecorationIcon(rstaIconToThemeIcon(imageIcon));
-					} else if (obj instanceof Icon _icon) {
-						newIcon.addDecorationIcon(_icon);
+				if (decorationsList != null) {
+					for (Object obj : decorationsList) {
+						if (obj instanceof DecoratableIcon decoratableIcon) {
+							newIcon.addDecorationIcon(rstaIconToThemeIcon(decoratableIcon));
+						} else if (obj instanceof ImageIcon imageIcon) {
+							newIcon.addDecorationIcon(rstaIconToThemeIcon(imageIcon));
+						} else if (obj instanceof Icon _icon) {
+							newIcon.addDecorationIcon(_icon);
+						}
 					}
 				}
+
+				return newIcon;
+			} catch (Exception e) {
+				LOG.error("Failed to load icon: " + key, e);
+				return null;
 			}
-
-			lookup_cache.put(icon, newIcon);
-
-			return newIcon;
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-
-		return icon;
+		});
 	}
 
 }

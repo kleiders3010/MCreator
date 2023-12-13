@@ -19,8 +19,8 @@
 package net.mcreator.workspace.settings;
 
 import com.google.common.base.CaseFormat;
-import net.mcreator.minecraft.api.ModAPIImplementation;
-import net.mcreator.minecraft.api.ModAPIManager;
+import net.mcreator.plugin.modapis.ModAPIImplementation;
+import net.mcreator.plugin.modapis.ModAPIManager;
 import net.mcreator.ui.MCreatorApplication;
 import net.mcreator.util.StringUtils;
 import net.mcreator.workspace.Workspace;
@@ -64,7 +64,7 @@ import java.util.stream.Stream;
 
 	private transient Workspace workspace; // we should never serialize this!!
 
-	private static transient final Pattern cleanVersionPattern = Pattern.compile("[^0-9.]+");
+	private static final Pattern cleanVersionPattern = Pattern.compile("[^0-9.]+");
 
 	public WorkspaceSettings(WorkspaceSettings other) {
 		this.modid = other.modid;
@@ -278,14 +278,14 @@ import java.util.stream.Stream;
 	}
 
 	public String getCredits() {
-		if (credits == null || credits.trim().equals(""))
+		if (credits == null || credits.isBlank())
 			return "Created using mod maker MCreator - https://mcreator.net/about";
 		return credits;
 	}
 
 	public String getWebsiteURL() {
-		if (websiteURL == null || websiteURL.trim().equals("") || !websiteURL.contains("http") || !websiteURL.contains(
-				"://") || !websiteURL.contains("."))
+		if (websiteURL == null || websiteURL.isBlank() || !websiteURL.contains("http") || !websiteURL.contains("://")
+				|| !websiteURL.contains("."))
 			return MCreatorApplication.SERVER_DOMAIN;
 		return websiteURL;
 	}

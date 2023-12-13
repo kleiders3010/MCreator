@@ -19,10 +19,15 @@
 
 package net.mcreator.util;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 public class TerribleModuleHacks {
+
+	private static final Logger LOG = LogManager.getLogger("Terrible module hacks");
 
 	public static void openAllUnnamed() {
 		ModuleLayer.boot().modules().forEach(module -> module.getPackages()
@@ -30,13 +35,13 @@ public class TerribleModuleHacks {
 	}
 
 	public static void openMCreatorRequirements() {
-		// MCreator theme
+		// Required by: LafUtil - to apply custom CSS styles
+		ModuleLayer.boot().findModule("java.desktop")
+				.ifPresent(module -> addOpens(module, "sun.awt", net.mcreator.ui.laf.LafUtil.class.getModule()));
 		ModuleLayer.boot().findModule("java.desktop").ifPresent(
-				module -> addOpens(module, "sun.awt", net.mcreator.ui.laf.MCreatorLookAndFeel.class.getModule()));
-		ModuleLayer.boot().findModule("java.desktop").ifPresent(module -> addOpens(module, "javax.swing.text.html",
-				net.mcreator.ui.laf.MCreatorLookAndFeel.class.getModule()));
+				module -> addOpens(module, "javax.swing.text.html", net.mcreator.ui.laf.LafUtil.class.getModule()));
 
-		// Blockly panel transparency
+		// Required by: BlocklyPanel - for transparency
 		ModuleLayer.boot().findModule("javafx.web").ifPresent(module -> addOpens(module, "com.sun.javafx.webkit",
 				net.mcreator.ui.blockly.BlocklyPanel.class.getModule()));
 		ModuleLayer.boot().findModule("javafx.web").ifPresent(
@@ -51,7 +56,7 @@ public class TerribleModuleHacks {
 			method.setAccessible(true);
 			method.invoke(where, pn, toadd, true, true);
 		} catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
-			e.printStackTrace();
+			LOG.error("Failed to open module: " + where.getName(), e);
 		}
 	}
 

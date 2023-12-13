@@ -39,6 +39,8 @@ import java.util.Locale;
 
 	public String commandName;
 
+	public String type;
+
 	public String permissionLevel;
 
 	@BlocklyXML("cmdargs") public String argsxml;
@@ -50,6 +52,7 @@ import java.util.Locale;
 	public Command(ModElement element) {
 		super(element);
 
+		this.type = "STANDARD";
 		this.permissionLevel = "4";
 	}
 
@@ -73,6 +76,7 @@ import java.util.Locale;
 					new ProceduralBlockCodeGenerator(blocklyBlockCodeGenerator));
 
 			additionalData.put("argscode", blocklyToJava.getGeneratedCode());
+			additionalData.put("argsblocks", blocklyToJava.getUsedBlocks());
 		};
 	}
 

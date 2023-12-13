@@ -53,7 +53,7 @@ public class VersionManager {
 	}
 
 	public void addRevision(Change change) {
-		while (((sizeOf() + change.sizeOf()) > MAX_HEAP_SIZE) && (changes.size() > 0)) {
+		while (((sizeOf() + change.sizeOf()) > MAX_HEAP_SIZE) && (!changes.isEmpty())) {
 			changes.removeFirst();
 			index--;
 		}
@@ -66,11 +66,16 @@ public class VersionManager {
 		linkChanges(change);
 
 		changes.add(change);
+
+		refreshPreview();
+
+		revisionListener.revisionChanged();
+	}
+
+	public void refreshPreview() {
 		imageMakerView.refreshTab();
 		if (layerPanel != null)
 			layerPanel.repaintList();
-
-		revisionListener.revisionChanged();
 	}
 
 	private void linkChanges(Change change) {

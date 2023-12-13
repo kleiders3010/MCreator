@@ -23,6 +23,7 @@ import net.mcreator.element.GeneratableElement;
 import net.mcreator.element.parts.Particle;
 import net.mcreator.element.parts.*;
 import net.mcreator.element.parts.procedure.Procedure;
+import net.mcreator.element.parts.procedure.StringListProcedure;
 import net.mcreator.element.types.interfaces.ICommonType;
 import net.mcreator.element.types.interfaces.IMCItemProvider;
 import net.mcreator.element.types.interfaces.IPOIProvider;
@@ -32,6 +33,8 @@ import net.mcreator.minecraft.MinecraftImageGenerator;
 import net.mcreator.ui.workspace.resources.TextureType;
 import net.mcreator.workspace.Workspace;
 import net.mcreator.workspace.elements.ModElement;
+import net.mcreator.workspace.references.ModElementReference;
+import net.mcreator.workspace.references.TextureReference;
 
 import javax.swing.*;
 import java.awt.*;
@@ -44,7 +47,7 @@ import java.util.List;
 @SuppressWarnings("unused") public class Dimension extends GeneratableElement
 		implements ICommonType, ITabContainedElement, IMCItemProvider, IPOIProvider {
 
-	public List<BiomeEntry> biomesInDimension;
+	@ModElementReference public List<BiomeEntry> biomesInDimension;
 
 	public String worldGenType;
 
@@ -70,9 +73,10 @@ import java.util.List;
 	public Sound portalSound;
 	public boolean enableIgniter;
 	public String igniterName;
+	public StringListProcedure specialInformation;
 	public TabEntry igniterTab;
-	public String texture;
-	public String portalTexture;
+	@TextureReference(TextureType.ITEM) public String texture;
+	@TextureReference(TextureType.BLOCK) public String portalTexture;
 	public boolean enablePortal;
 	public Procedure portalMakeCondition;
 	public Procedure portalUseCondition;

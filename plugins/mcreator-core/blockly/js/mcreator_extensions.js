@@ -4,33 +4,6 @@ Blockly.Extensions.register('small_text_tip',
             new Blockly.FieldLabel(javabridge.t('blockly.block.' + this.type + '.tip'), 'small-text'));
     });
 
-Blockly.Extensions.register('gamemode_list_provider', appendDropDown('gamemodes', 'gamemode'));
-
-Blockly.Extensions.register('damagesource_list_provider', appendDropDown('damagesources', 'damagesource'));
-
-Blockly.Extensions.register('sound_category_list_provider',
-    appendDropDownWithMessage('sound_category_list', 'soundcategories', 'soundcategory'));
-
-Blockly.Extensions.register('material_list_provider', appendDropDown('material', 'material'));
-
-Blockly.Extensions.register('plant_type_list_provider', appendDropDown('planttypes', 'planttype'));
-
-Blockly.Extensions.register('gui_list_provider', appendDropDown('gui', 'guiname'));
-
-Blockly.Extensions.register('dimension_list_provider', appendDropDown('dimension', 'dimension'));
-
-Blockly.Extensions.register('gamerulesboolean_list_provider', appendDropDown('gamerulesboolean', 'gamerulesboolean'));
-
-Blockly.Extensions.register('gamerulesnumber_list_provider', appendDropDown('gamerulesnumber', 'gamerulesnumber'));
-
-Blockly.Extensions.register('schematic_list_provider', appendDropDown('schematic', 'schematic'));
-
-Blockly.Extensions.register('fluid_list_provider', appendDropDown('fluid', 'fluid'));
-
-Blockly.Extensions.register('direction_list_provider', appendDropDown('direction', 'direction'));
-
-Blockly.Extensions.register('dimension_custom_list_provider', appendDropDown('dimension_custom', 'dimension'));
-
 // Extension to mark a procedure block as a custom loop
 Blockly.Extensions.register('is_custom_loop',
     function () {
@@ -114,6 +87,44 @@ Blockly.Extensions.registerMutator('variable_entity_input',
         }
     });
 
+// Helper function to use in Blockly extensions that register one data list selector field to update contents of another
+// The block may define input called "<targetName>Field" to customize field's position
+// Note that the source field must be inserted before the target field for their values to be loaded properly
+function appendAutoReloadingDataListField(sourceName, targetName, targetList) {
+    return function () {
+        const thisBlock = this;
+        (this.getInput(targetName + 'Field') || this.appendDummyInput()).appendField(
+            new FieldDataListSelector(targetList, undefined, {
+                'customEntryProviders': function () {
+                    return thisBlock.getFieldValue(sourceName);
+                }
+            }), targetName);
+        this.setOnChange(function (changeEvent) {
+            // Proceed if event represents change to field named "<sourceName>" on this block and was created in a group
+            // Event triggered by FieldDataListSelector is only grouped if field value is modified in UI
+            if (changeEvent.type === Blockly.Events.BLOCK_CHANGE &&
+                changeEvent.group && changeEvent.blockId === this.id &&
+                changeEvent.element === 'field' &&
+                changeEvent.name === sourceName) {
+                const group = Blockly.Events.getGroup();
+                // Makes it so the update and the reset event get undone together.
+                Blockly.Events.setGroup(changeEvent.group);
+                this.setFieldValue('', targetName);
+                Blockly.Events.setGroup(group);
+            }
+        });
+    };
+}
+
+Blockly.Extensions.register('entity_data_logic_list_provider',
+    appendAutoReloadingDataListField('customEntity', 'accessor', 'entitydata_logic'));
+
+Blockly.Extensions.register('entity_data_integer_list_provider',
+    appendAutoReloadingDataListField('customEntity', 'accessor', 'entitydata_integer'));
+
+Blockly.Extensions.register('entity_data_string_list_provider',
+    appendAutoReloadingDataListField('customEntity', 'accessor', 'entitydata_string'));
+
 // Extension used by int providers to validate their min/max values, so that min can't be greater than max and vice versa
 Blockly.Extensions.register('min_max_fields_validator',
     function () {
@@ -135,6 +146,38 @@ Blockly.Extensions.register('min_max_fields_validator',
             }
             return newValue;
         });
+    });
+
+// Mutator to disable the "biome filter" placement inside the "inline placed feature" block
+Blockly.Extensions.registerMixin('disable_inside_inline_placed_feature',
+    {
+        // Check if this block is inside the inline placed feature statement
+        getSurroundLoop: function () {
+            let block = this;
+            do {
+                if (block.type == 'placed_feature_inline') {
+                    return block;
+                }
+                block = block.getSurroundParent();
+            } while (block);
+            return null;
+        },
+
+        onchange: function (e) {
+            // Don't change state if it's at the start of a drag and it's not a move event
+            if (!this.workspace.isDragging || this.workspace.isDragging() || e.type !== Blockly.Events.BLOCK_MOVE) {
+                return;
+            }
+            const enabled = !(this.getSurroundLoop(this));
+            this.setWarningText(enabled ? null : javabridge.t('blockly.block.placed_feature_inline.disabled_placement'));
+            if (!this.isInFlyout) {
+                const group = Blockly.Events.getGroup();
+                // Makes it so the move and the disable event get undone together.
+                Blockly.Events.setGroup(e.group);
+                this.setEnabled(enabled);
+                Blockly.Events.setGroup(group);
+            }
+        }
     });
 
 // Helper function to get the min and max values of a given int provider as an array of [min, max]
@@ -245,6 +288,10 @@ Blockly.Extensions.register('replace_sphere_validator', validateIntProviderInput
 Blockly.Extensions.register('simple_column_validator', validateIntProviderInputs(['height', 0, Infinity]));
 
 Blockly.Extensions.register('state_provider_int_property_validator', validateIntProviderInputs(['value', 0, Infinity]));
+
+Blockly.Extensions.register('pine_tree_feature_validator', validateIntProviderInputs(['foliage_height', 0, 24]));
+
+Blockly.Extensions.register('spruce_tree_feature_validator', validateIntProviderInputs(['radius', 0, 24], ['trunk_height', 0, 24]));
 
 // Helper function to provide a mixin for mutators that add a single repeating (dummy) input with additional fields
 // The mutator container block must have a "STACK" statement input for this to work
@@ -387,7 +434,7 @@ function simpleRepeatingInputMixin(mutatorContainer, mutatorInput, inputName, in
 // Helper function to provide mixins for weighted list mutators
 function weightedListMutatorMixin(inputType) {
     return simpleRepeatingInputMixin('weighted_list_mutator_container', 'weighted_list_mutator_input', 'entry',
-        function(thisBlock, inputName, index) {
+        function (thisBlock, inputName, index) {
             thisBlock.appendValueInput(inputName + index).setCheck(inputType).setAlign(Blockly.Input.Align.RIGHT)
                 .appendField(javabridge.t('blockly.block.weighted_list.weight'))
                 .appendField(new Blockly.FieldNumber(1, 1, null, 1), 'weight' + index)
@@ -402,6 +449,15 @@ Blockly.Extensions.registerMutator('block_predicate_all_any_mutator', simpleRepe
                 .appendField(javabridge.t('blockly.block.' + thisBlock.type + '.input'));
         }),
     undefined, ['block_predicate_mutator_input']);
+
+Blockly.Extensions.registerMutator('feature_simple_random_mutator', simpleRepeatingInputMixin(
+        'feature_simple_random_mutator_container', 'feature_simple_random_mutator_input', 'feature',
+        function (thisBlock, inputName, index) {
+            thisBlock.appendValueInput(inputName + index).setCheck(['Feature', 'PlacedFeature'])
+                .setAlign(Blockly.Input.Align.RIGHT)
+                .appendField(javabridge.t('blockly.block.' + thisBlock.type + '.input'));
+        }, true, [], true),
+    undefined, ['feature_simple_random_mutator_input']);
 
 Blockly.Extensions.registerMutator('block_list_mutator', simpleRepeatingInputMixin(
         'block_list_mutator_container', 'block_list_mutator_input', 'condition',
@@ -431,15 +487,15 @@ Blockly.Extensions.registerMutator('ore_feature_mutator', simpleRepeatingInputMi
     undefined, ['ore_mutator_input']);
 
 Blockly.Extensions.registerMutator('weighted_height_provider_mutator', weightedListMutatorMixin('HeightProvider'),
-        undefined, ['weighted_list_mutator_input']);
+    undefined, ['weighted_list_mutator_input']);
 
 Blockly.Extensions.registerMutator('weighted_int_provider_mutator', weightedListMutatorMixin('IntProvider'),
-        undefined, ['weighted_list_mutator_input']);
+    undefined, ['weighted_list_mutator_input']);
 
 // We cannot use the weighted mutator function, as we need to add image fields too
 Blockly.Extensions.registerMutator('weighted_state_provider_mutator', simpleRepeatingInputMixin(
         'weighted_list_mutator_container', 'weighted_list_mutator_input', 'entry',
-        function(thisBlock, inputName, index) {
+        function (thisBlock, inputName, index) {
             thisBlock.appendValueInput(inputName + index).setCheck('MCItemBlock').setAlign(Blockly.Input.Align.RIGHT)
                 .appendField(javabridge.t('blockly.block.weighted_list.weight'))
                 .appendField(new Blockly.FieldNumber(1, 1, null, 1), 'weight' + index)
@@ -447,6 +503,15 @@ Blockly.Extensions.registerMutator('weighted_state_provider_mutator', simpleRepe
                 .appendField(new Blockly.FieldImage("./res/b_input.png", 8, 10));
         }, true, ['weight'], true),
     undefined, ['weighted_list_mutator_input']);
+
+// Mutator for repeating tree decorator inputs
+Blockly.Extensions.registerMutator('tree_decorator_mutator', simpleRepeatingInputMixin(
+        'tree_decorator_mutator_container', 'tree_decorator_mutator_input', 'decorator',
+        function (thisBlock, inputName, index) {
+            thisBlock.appendValueInput(inputName + index).setCheck('TreeDecorator').setAlign(Blockly.Input.Align.RIGHT)
+                .appendField(javabridge.t('blockly.block.feature_tree.decorator_input'));
+        }),
+    undefined, ['tree_decorator_mutator_input']);
 
 // Helper function for extensions that validate one or more resource location text fields
 function validateResourceLocationFields(...fields) {
@@ -466,4 +531,4 @@ function validateResourceLocationFields(...fields) {
 Blockly.Extensions.register('tag_input_field_validator', validateResourceLocationFields('tag'));
 
 Blockly.Extensions.register('geode_tag_fields_validator',
-        validateResourceLocationFields('cannot_replace_tag', 'invalid_blocks_tag'));
+    validateResourceLocationFields('cannot_replace_tag', 'invalid_blocks_tag'));

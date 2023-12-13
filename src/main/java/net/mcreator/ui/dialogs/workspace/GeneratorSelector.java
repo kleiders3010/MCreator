@@ -24,11 +24,13 @@ import net.mcreator.generator.Generator;
 import net.mcreator.generator.GeneratorConfiguration;
 import net.mcreator.generator.GeneratorFlavor;
 import net.mcreator.generator.GeneratorStats;
+import net.mcreator.minecraft.DataListLoader;
 import net.mcreator.ui.component.JEmptyBox;
 import net.mcreator.ui.component.util.ComponentUtils;
 import net.mcreator.ui.component.util.PanelUtils;
 import net.mcreator.ui.init.L10N;
 import net.mcreator.ui.init.UIRES;
+import net.mcreator.ui.laf.themes.Theme;
 
 import javax.annotation.Nullable;
 import javax.swing.*;
@@ -37,11 +39,15 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.text.DecimalFormat;
+import java.util.List;
 import java.util.Map;
 
 public class GeneratorSelector {
 
-	private static final String covpfx = "dialog.generator_selector.coverage.";
+	public static final String covpfx = "dialog.generator_selector.coverage.";
+
+	private static final List<GeneratorFlavor> compatible1 = List.of(GeneratorFlavor.FORGE, GeneratorFlavor.FABRIC,
+			GeneratorFlavor.NEOFORGE, GeneratorFlavor.QUILT);
 
 	/**
 	 * <p>Open a dialog window to select a {@link Generator} from the loaded generators. </p>
@@ -68,10 +74,8 @@ public class GeneratorSelector {
 
 			if (currentFlavor == null || currentFlavor.equals(generatorConfiguration.getGeneratorFlavor())) {
 				generator.addItem(generatorConfiguration);
-			} else if ((currentFlavor == GeneratorFlavor.FORGE
-					&& generatorConfiguration.getGeneratorFlavor() == GeneratorFlavor.FABRIC
-					|| currentFlavor == GeneratorFlavor.FABRIC
-					&& generatorConfiguration.getGeneratorFlavor() == GeneratorFlavor.FORGE) && !newWorkspace) {
+			} else if (compatible1.contains(currentFlavor) && compatible1.contains(
+					generatorConfiguration.getGeneratorFlavor()) && !newWorkspace) {
 				generator.addItem(generatorConfiguration);
 			}
 
@@ -125,35 +129,12 @@ public class GeneratorSelector {
 			genStats.add(new JEmptyBox(20, 20));
 
 			JPanel supportedElements = new JPanel(new GridLayout(-1, 6, 7, 3));
-
-			addStatsBar(L10N.t(covpfx + "achievements"), "achievements", supportedElements, stats);
-			addStatsBar(L10N.t(covpfx + "biomes"), "biomes", supportedElements, stats);
-			addStatsBar(L10N.t(covpfx + "blocksitems"), "blocksitems", supportedElements, stats);
-			addStatsBar(L10N.t(covpfx + "tabs"), "tabs", supportedElements, stats);
-			addStatsBar(L10N.t(covpfx + "damage_sources"), "damagesources", supportedElements, stats);
-			addStatsBar(L10N.t(covpfx + "def_biome_features"), "defaultfeatures", supportedElements, stats);
-			addStatsBar(L10N.t(covpfx + "enchantments"), "enchantments", supportedElements, stats);
-			addStatsBar(L10N.t(covpfx + "enchantment_types"), "enchantmenttypes", supportedElements, stats);
-			addStatsBar(L10N.t(covpfx + "entities"), "entities", supportedElements, stats);
-			addStatsBar(L10N.t(covpfx + "projectiles"), "projectiles", supportedElements, stats);
-			addStatsBar(L10N.t(covpfx + "mobspawntypes"), "mobspawntypes", supportedElements, stats);
-			addStatsBar(L10N.t(covpfx + "fluids"), "fluids", supportedElements, stats);
-			addStatsBar(L10N.t(covpfx + "game_modes"), "gamemodes", supportedElements, stats);
-			addStatsBar(L10N.t(covpfx + "game_rules"), "gamerules", supportedElements, stats);
-			addStatsBar(L10N.t(covpfx + "generation_steps"), "generationsteps", supportedElements, stats);
-			addStatsBar(L10N.t(covpfx + "map_colors"), "mapcolors", supportedElements, stats);
-			addStatsBar(L10N.t(covpfx + "materials"), "materials", supportedElements, stats);
-			addStatsBar(L10N.t(covpfx + "particles"), "particles", supportedElements, stats);
-			addStatsBar(L10N.t(covpfx + "path_node_types"), "pathnodetypes", supportedElements, stats);
-			addStatsBar(L10N.t(covpfx + "effects"), "effects", supportedElements, stats);
-			addStatsBar(L10N.t(covpfx + "potions"), "potions", supportedElements, stats);
-			addStatsBar(L10N.t(covpfx + "sounds"), "sounds", supportedElements, stats);
-			addStatsBar(L10N.t(covpfx + "sound_categories"), "soundcategories", supportedElements, stats);
-			addStatsBar(L10N.t(covpfx + "step_sounds"), "stepsounds", supportedElements, stats);
-			addStatsBar(L10N.t(covpfx + "plant_types"), "planttypes", supportedElements, stats);
-			addStatsBar(L10N.t(covpfx + "screens"), "screens", supportedElements, stats);
-			addStatsBar(L10N.t(covpfx + "villager_professions"), "villagerprofessions", supportedElements, stats);
-			addStatsBar(L10N.t(covpfx + "item_types"), "itemtypes", supportedElements, stats);
+			DataListLoader.getCache().entrySet().stream().filter(e -> !e.getValue().isEmpty()).map(Map.Entry::getKey)
+					.sorted().forEach(e -> {
+						String name = L10N.t(covpfx + e);
+						if (name != null)
+							addStatsBar(name, e, supportedElements, stats);
+					});
 
 			genStats.add(PanelUtils.northAndCenterElement(L10N.label("dialog.generator_selector.element_coverage"),
 					supportedElements, 10, 10));
@@ -162,8 +143,11 @@ public class GeneratorSelector {
 
 			JPanel supportedProcedures = new JPanel(new GridLayout(-1, 4, 7, 3));
 
-			stats.getGeneratorBlocklyBlocks()
-					.forEach((key, value) -> addStatsBar(L10N.t(covpfx + key), key, supportedProcedures, stats));
+			stats.getGeneratorBlocklyBlocks().forEach((key, value) -> {
+				String name = L10N.t(covpfx + key);
+				if (name != null)
+					addStatsBar(name, key, supportedProcedures, stats);
+			});
 
 			addStatsBar(L10N.t(covpfx + "triggers"), "triggers", supportedProcedures, stats);
 
@@ -249,11 +233,11 @@ public class GeneratorSelector {
 
 		bar.setUI(new BasicProgressBarUI() {
 			@Override protected Color getSelectionBackground() {
-				return (Color) UIManager.get("MCreatorLAF.BRIGHT_COLOR");
+				return Theme.current().getForegroundColor();
 			}
 
 			@Override protected Color getSelectionForeground() {
-				return (Color) UIManager.get("MCreatorLAF.BLACK_ACCENT");
+				return Theme.current().getSecondAltBackgroundColor();
 			}
 		});
 
@@ -266,7 +250,7 @@ public class GeneratorSelector {
 		else if (bar.getValue() < 100)
 			bar.setForeground(new Color(0xF5F984));
 		else
-			bar.setForeground((Color) UIManager.get("MCreatorLAF.MAIN_TINT"));
+			bar.setForeground(Theme.current().getInterfaceAccentColor());
 
 		supportedElements.add(new JLabel(label + ": "));
 		supportedElements.add(bar);

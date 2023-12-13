@@ -20,25 +20,24 @@
 package net.mcreator.integration;
 
 import net.mcreator.element.GeneratableElement;
+import net.mcreator.element.parts.IWorkspaceDependent;
 import net.mcreator.generator.Generator;
 import net.mcreator.generator.GeneratorConfiguration;
 import net.mcreator.generator.GeneratorFlavor;
 import net.mcreator.io.zip.ZipIO;
-import net.mcreator.ui.init.ImageMakerTexturesCache;
 import net.mcreator.workspace.Workspace;
 import net.mcreator.workspace.WorkspaceUtils;
 import net.mcreator.workspace.elements.ModElement;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.reflections.Reflections;
 import org.reflections.scanners.Scanners;
 import org.reflections.util.ConfigurationBuilder;
 
 import java.io.File;
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
@@ -49,15 +48,7 @@ import java.util.stream.Stream;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class WorkspaceConvertersTest {
-
-	@BeforeAll public static void initTest() throws IOException {
-		System.setProperty("log_directory", System.getProperty("java.io.tmpdir"));
-
-		TestSetup.setupIntegrationTestEnvironment();
-
-		ImageMakerTexturesCache.init();
-	}
+@ExtendWith(IntegrationTestSetup.class) public class WorkspaceConvertersTest {
 
 	public @TestFactory Stream<DynamicTest> testWorkspaceConversions() {
 		Set<String> testWorkspaces = new Reflections(
@@ -91,19 +82,21 @@ public class WorkspaceConvertersTest {
 
 					// Check if all MEs have valid GE definition
 					for (ModElement mod : workspace.getModElements()) {
-						assertTrue(workspace.getModElementManager().hasModElementGeneratableElement(mod));
-
 						GeneratableElement ge = mod.getGeneratableElement();
 
 						assertNotNull(ge);
+
+						// Check if all workspace fields are not null
+						IWorkspaceDependent.processWorkspaceDependentObjects(ge,
+								workspaceDependent -> assertNotNull(workspaceDependent.getWorkspace()));
 
 						// test if methods below work and no exceptions are thrown
 
 						// save custom mod element picture if it has one
 						workspace.getModElementManager().storeModElementPicture(ge);
 
-						// add mod element to workspace again (update ME action)
-						workspace.addModElement(ge.getModElement());
+						// preload/update MCItem cache and MCItem icons
+						ge.getModElement().getMCItems().forEach(mcItem -> mcItem.icon.getImage().flush());
 
 						// we reinit the mod to load new icons etc.
 						ge.getModElement().reinit(workspace);

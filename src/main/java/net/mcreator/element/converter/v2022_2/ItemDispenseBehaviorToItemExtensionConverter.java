@@ -23,6 +23,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.mcreator.element.GeneratableElement;
 import net.mcreator.element.ModElementType;
+import net.mcreator.element.converter.ConverterUtils;
 import net.mcreator.element.converter.IConverter;
 import net.mcreator.element.parts.MItemBlock;
 import net.mcreator.element.parts.procedure.Procedure;
@@ -40,6 +41,7 @@ public class ItemDispenseBehaviorToItemExtensionConverter implements IConverter 
 	@Override
 	public GeneratableElement convert(Workspace workspace, GeneratableElement input, JsonElement jsonElementInput) {
 		try {
+			String originalName = input.getModElement().getName();
 			JsonObject item = jsonElementInput.getAsJsonObject().getAsJsonObject("definition");
 			if (item.get("hasDispenseBehavior") != null && item.get("hasDispenseBehavior").getAsBoolean()) {
 				ItemExtension itemExtension;
@@ -61,9 +63,9 @@ public class ItemDispenseBehaviorToItemExtensionConverter implements IConverter 
 					}
 				}
 
-				itemExtension = new ItemExtension(
-						new ModElement(workspace, input.getModElement().getName() + "Extension",
-								ModElementType.ITEMEXTENSION));
+				itemExtension = new ItemExtension(new ModElement(workspace,
+						ConverterUtils.findSuitableModElementName(workspace, originalName + "Extension"),
+						ModElementType.ITEMEXTENSION));
 
 				itemExtension.item = new MItemBlock(workspace, "CUSTOM:" + input.getModElement().getName());
 				itemExtension.hasDispenseBehavior = item.get("hasDispenseBehavior").getAsBoolean();

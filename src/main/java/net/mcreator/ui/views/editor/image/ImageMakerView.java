@@ -19,6 +19,8 @@
 package net.mcreator.ui.views.editor.image;
 
 import net.mcreator.io.FileIO;
+import net.mcreator.io.tree.FileNode;
+import net.mcreator.io.zip.ZipIO;
 import net.mcreator.minecraft.RegistryNameFixer;
 import net.mcreator.ui.MCreator;
 import net.mcreator.ui.MCreatorTabs;
@@ -27,11 +29,14 @@ import net.mcreator.ui.component.zoompane.JZoomPane;
 import net.mcreator.ui.dialogs.MCreatorDialog;
 import net.mcreator.ui.dialogs.imageeditor.FromTemplateDialog;
 import net.mcreator.ui.init.L10N;
+import net.mcreator.ui.laf.themes.Theme;
 import net.mcreator.ui.validation.component.VTextField;
 import net.mcreator.ui.validation.validators.RegistryNameValidator;
 import net.mcreator.ui.views.ViewBase;
 import net.mcreator.ui.views.editor.image.canvas.Canvas;
 import net.mcreator.ui.views.editor.image.canvas.CanvasRenderer;
+import net.mcreator.ui.views.editor.image.canvas.SelectedBorder;
+import net.mcreator.ui.views.editor.image.clipboard.ClipboardManager;
 import net.mcreator.ui.views.editor.image.layer.Layer;
 import net.mcreator.ui.views.editor.image.layer.LayerPanel;
 import net.mcreator.ui.views.editor.image.tool.ToolPanel;
@@ -51,37 +56,42 @@ import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class ImageMakerView extends ViewBase implements MouseListener, MouseMotionListener {
-
 	private static final Logger LOG = LogManager.getLogger("Image Maker View");
+	private static final int FPS = 4;
 
-	private String name = "Texture creator";
+	public static final ExecutorService toolExecutor = Executors.newSingleThreadExecutor();
 
-	private Canvas canvas;
 	private final CanvasRenderer canvasRenderer;
 	private final JZoomPane zoomPane;
 	private final JSplitPane leftSplitPane;
 	private final JSplitPane rightSplitPane;
 	private final ToolPanel toolPanel;
 	private final LayerPanel layerPanel;
-
 	private final VersionManager versionManager;
-
+	private final ClipboardManager clipboardManager;
 	private final JLabel imageInfo = new JLabel("");
 
 	public final JButton save;
 
-	public static final ExecutorService toolExecutor = Executors.newSingleThreadExecutor();
+	private String name = L10N.t("tab.image_maker");
 	private MCreatorTabs.Tab tab;
 	private File image;
+	private Canvas canvas;
+	private Cursor currentCursor = null;
+	private boolean active;
+	private boolean canEdit = true;
 
 	public ImageMakerView(MCreator f) {
 		super(f);
 
 		versionManager = new VersionManager(this);
+		clipboardManager = new ClipboardManager(this);
 
 		JPanel controls = new JPanel(new BorderLayout());
 		controls.setBorder(new EmptyBorder(2, 3, 2, 3));
@@ -90,23 +100,23 @@ public class ImageMakerView extends ViewBase implements MouseListener, MouseMoti
 
 		save = L10N.button("dialog.image_maker.save");
 		save.setMargin(new Insets(1, 40, 1, 40));
-		save.setBackground((Color) UIManager.get("MCreatorLAF.MAIN_TINT"));
-		save.setForeground((Color) UIManager.get("MCreatorLAF.BLACK_ACCENT"));
+		save.setBackground(Theme.current().getInterfaceAccentColor());
+		save.setForeground(Theme.current().getSecondAltBackgroundColor());
 		save.setFocusPainted(false);
 
-		imageInfo.setForeground(((Color) UIManager.get("MCreatorLAF.GRAY_COLOR")).darker());
+		imageInfo.setForeground((Theme.current().getAltForegroundColor()).darker());
 		imageInfo.setBorder(BorderFactory.createEmptyBorder(2, 5, 2, 5));
 
 		JButton saveNew = L10N.button("dialog.image_maker.save_as_new");
 		saveNew.setMargin(new Insets(1, 40, 1, 40));
-		saveNew.setBackground((Color) UIManager.get("MCreatorLAF.LIGHT_ACCENT"));
-		saveNew.setForeground((Color) UIManager.get("MCreatorLAF.BRIGHT_COLOR"));
+		saveNew.setBackground(Theme.current().getAltBackgroundColor());
+		saveNew.setForeground(Theme.current().getForegroundColor());
 		saveNew.setFocusPainted(false);
 
 		JButton template = L10N.button("dialog.image_maker.generate_from_template");
 		template.setMargin(new Insets(1, 40, 1, 40));
-		template.setBackground((Color) UIManager.get("MCreatorLAF.LIGHT_ACCENT"));
-		template.setForeground((Color) UIManager.get("MCreatorLAF.BRIGHT_COLOR"));
+		template.setBackground(Theme.current().getAltBackgroundColor());
+		template.setForeground(Theme.current().getForegroundColor());
 		template.setFocusPainted(false);
 
 		save.addActionListener(event -> save());
@@ -120,7 +130,7 @@ public class ImageMakerView extends ViewBase implements MouseListener, MouseMoti
 		rightSplitPane = new JSplitPane() {
 			@Override protected void paintComponent(Graphics g) {
 				Graphics2D g2d = (Graphics2D) g.create();
-				g2d.setColor((Color) UIManager.get("MCreatorLAF.LIGHT_ACCENT"));
+				g2d.setColor(Theme.current().getAltBackgroundColor());
 				g2d.setComposite(AlphaComposite.SrcOver.derive(0.45f));
 				g2d.fillRect(0, 0, getWidth(), getHeight());
 				g2d.dispose();
@@ -156,11 +166,29 @@ public class ImageMakerView extends ViewBase implements MouseListener, MouseMoti
 		controls.add(leftControls, BorderLayout.WEST);
 		controls.add(rightControls, BorderLayout.EAST);
 
-		controls.setBorder(
-				BorderFactory.createMatteBorder(0, 0, 1, 0, (Color) UIManager.get("MCreatorLAF.BLACK_ACCENT")));
+		controls.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, Theme.current().getSecondAltBackgroundColor()));
 
 		add(controls, BorderLayout.NORTH);
 		add(leftSplitPane, BorderLayout.CENTER);
+
+		Thread animator = new Thread(() -> {
+			active = true;
+			while (active) {
+				if (canvas != null && canvas.getSelection() != null
+						&& canvas.getSelection().getEditing() != SelectedBorder.NONE) {
+					canvasRenderer.addPhaseToOutline((float) Math.PI / FPS / 2);
+					repaint();
+				}
+
+				try {
+					Thread.sleep(1000 / FPS);
+				} catch (InterruptedException e) {
+					LOG.error(e.getMessage(), e);
+				}
+			}
+		}, "ImageMakerAnimationRenderer");
+
+		animator.start();
 	}
 
 	public void openInEditMode(File image) {
@@ -173,10 +201,31 @@ public class ImageMakerView extends ViewBase implements MouseListener, MouseMoti
 			canvas.add(layer);
 			name = image.getName();
 			toolPanel.initTools();
-			updateInfobar(0, 0);
+			updateInfoBar(0, 0);
 		} catch (IOException e) {
 			LOG.error(e.getMessage(), e);
 		}
+	}
+
+	public void openInReadOnlyMode(FileNode image) {
+		String[] path = image.splitPath();
+		name = FilenameUtilsPatched.getName(path[1]);
+		canEdit = false;
+		Layer layer = Layer.toLayer(
+				Objects.requireNonNull(ZipIO.readFileInZip(new File(path[0]), path[1], (file, entry) -> {
+					try {
+						return ImageIO.read(file.getInputStream(entry));
+					} catch (IOException e) {
+						LOG.error(e.getMessage(), e);
+						return null;
+					}
+				}), "Could not read source image asset!"), name);
+		canvas = new Canvas(layer.getWidth(), layer.getHeight(), layerPanel, versionManager);
+		canvasRenderer.setCanvas(canvas);
+		toolPanel.setCanvas(canvas);
+		canvas.add(layer);
+		toolPanel.initTools();
+		updateInfoBar(0, 0);
 	}
 
 	public void setSaveLocation(File location) {
@@ -193,21 +242,28 @@ public class ImageMakerView extends ViewBase implements MouseListener, MouseMoti
 
 				//reload image in java cache
 				new ImageIcon(image.getAbsolutePath()).getImage().flush();
-				mcreator.mv.reloadElements();
+				mcreator.mv.reloadElementsInCurrentTab();
 
 				refreshTab();
 			} else {
 				saveAs();
 			}
 		} catch (IOException e) {
-			e.printStackTrace();
+			LOG.error(e.getMessage(), e);
 		}
 	}
 
 	public void saveAs() {
+		if (!canEdit) {
+			int option = JOptionPane.showConfirmDialog(mcreator, L10N.t("dialog.image_maker.save.view_only"),
+					L10N.t("common.confirmation"), JOptionPane.OK_CANCEL_OPTION, JOptionPane.INFORMATION_MESSAGE);
+			if (option != JOptionPane.OK_OPTION)
+				return;
+		}
+
 		Image image = canvasRenderer.render();
 
-		JComboBox<TextureType> types = new JComboBox<>(TextureType.getTypes(false));
+		JComboBox<TextureType> types = new JComboBox<>(TextureType.getSupportedTypes(mcreator.getWorkspace(), false));
 		VTextField name = new VTextField(20);
 		name.setValidator(new RegistryNameValidator(name, L10N.t("dialog.image_maker.texture_name")));
 		name.enableRealtimeValidation();
@@ -268,7 +324,7 @@ public class ImageMakerView extends ViewBase implements MouseListener, MouseMoti
 		toolPanel.setCanvas(canvas);
 		this.name = name + ".png";
 		toolPanel.initTools();
-		updateInfobar(0, 0);
+		updateInfoBar(0, 0);
 	}
 
 	public void newImage(Layer layer) {
@@ -276,9 +332,14 @@ public class ImageMakerView extends ViewBase implements MouseListener, MouseMoti
 		canvasRenderer.setCanvas(canvas);
 		toolPanel.setCanvas(canvas);
 		canvas.add(layer);
-		this.name = "Image maker";
+		this.name = L10N.t("tab.image_maker");
 		toolPanel.initTools();
-		updateInfobar(0, 0);
+		updateInfoBar(0, 0);
+	}
+
+	public static boolean isFileSupported(String fileName) {
+		return Arrays.asList("bmp", "gif", "jpeg", "jpg", "png", "tiff", "tif", "wbmp")
+				.contains(FilenameUtilsPatched.getExtension(fileName));
 	}
 
 	@Override public ViewBase showView() {
@@ -287,12 +348,14 @@ public class ImageMakerView extends ViewBase implements MouseListener, MouseMoti
 		else
 			this.tab = new MCreatorTabs.Tab(this);
 
+		tab.setTabClosedListener(tab -> this.active = false);
+
 		MCreatorTabs.Tab existing = mcreator.mcreatorTabs.showTabOrGetExisting(this.tab);
 		if (existing == null) {
 			mcreator.mcreatorTabs.addTab(this.tab);
 			leftSplitPane.setDividerLocation(1.2 / 8);
 			rightSplitPane.setDividerLocation(5.7 / 7);
-			toolPanel.setDividerLocation(1.0 / 3);
+			toolPanel.setDividerLocation(1.2 / 3.1);
 			zoomPane.getZoomport().fitZoom();
 			refreshTab();
 			return this;
@@ -324,14 +387,12 @@ public class ImageMakerView extends ViewBase implements MouseListener, MouseMoti
 	}
 
 	@Override public void mousePressed(MouseEvent e) {
-		zoomPane.setCursor(toolPanel.getCurrentTool().getUsingCursor());
-		canvasRenderer.setCursor(toolPanel.getCurrentTool().getUsingCursor());
+		setEditorCursor(toolPanel.getCurrentTool().getUsingCursor());
 		toolExecutor.execute(() -> toolPanel.getCurrentTool().mousePressed(e));
 	}
 
 	@Override public void mouseReleased(MouseEvent e) {
-		zoomPane.setCursor(toolPanel.getCurrentTool().getCursor());
-		canvasRenderer.setCursor(toolPanel.getCurrentTool().getCursor());
+		setEditorCursor(toolPanel.getCurrentTool().getCursor());
 		toolExecutor.execute(() -> toolPanel.getCurrentTool().mouseReleased(e));
 	}
 
@@ -344,25 +405,48 @@ public class ImageMakerView extends ViewBase implements MouseListener, MouseMoti
 	}
 
 	@Override public void mouseDragged(MouseEvent e) {
-		zoomPane.setCursor(toolPanel.getCurrentTool().getUsingCursor());
-		canvasRenderer.setCursor(toolPanel.getCurrentTool().getUsingCursor());
+		setEditorCursor(toolPanel.getCurrentTool().getUsingCursor());
 		toolExecutor.execute(() -> toolPanel.getCurrentTool().mouseDragged(e));
-		updateInfobar(e.getX(), e.getY());
+		updateInfoBar(e.getX(), e.getY());
 	}
 
 	@Override public void mouseMoved(MouseEvent e) {
+		if (toolPanel.getCurrentTool().getHoverCursor() != null) {
+			setEditorCursor(toolPanel.getCurrentTool().getHoverCursor());
+		}
 		toolExecutor.execute(() -> toolPanel.getCurrentTool().mouseMoved(e));
-		updateInfobar(e.getX(), e.getY());
+		updateInfoBar(e.getX(), e.getY());
 	}
 
-	private void updateInfobar(int x, int y) {
-		imageInfo.setText(
-				"[" + (image == null ? "New image" : "File: " + image.getName()) + ", size: " + canvas.getWidth() + "x"
-						+ canvas.getHeight() + "] Mouse location: " + x + ", " + y);
+	public void setEditorCursor(Cursor cursor) {
+		if (currentCursor == cursor)
+			return;
+		currentCursor = cursor;
+
+		SwingUtilities.invokeLater(() -> {
+			zoomPane.getZoomport().setCursor(cursor);
+			canvasRenderer.setCursor(cursor);
+		});
+	}
+
+	private void updateInfoBar(int x, int y) {
+		String title;
+		if (image != null)
+			title = L10N.t("dialog.image_maker.info_bar.file", image.getName());
+		else if (!canEdit)
+			title = L10N.t("dialog.image_maker.info_bar.source_image", name);
+		else
+			title = L10N.t("dialog.image_maker.info_bar.new_image");
+
+		imageInfo.setText(L10N.t("dialog.image_maker.info_bar", title, canvas.getWidth(), canvas.getHeight(), x, y));
 	}
 
 	public VersionManager getVersionManager() {
 		return versionManager;
+	}
+
+	public ClipboardManager getClipboardManager() {
+		return clipboardManager;
 	}
 
 	public ToolPanel getToolPanel() {

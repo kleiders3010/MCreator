@@ -23,8 +23,8 @@ import net.mcreator.generator.Generator;
 import net.mcreator.generator.GeneratorConfiguration;
 import net.mcreator.generator.GeneratorUtils;
 import net.mcreator.generator.setup.folders.AbstractFolderStructure;
+import net.mcreator.generator.template.InlineTemplatesHandler;
 import net.mcreator.generator.template.base.BaseDataModelProvider;
-import net.mcreator.generator.template.base.DefaultFreemarkerConfiguration;
 import net.mcreator.io.FileIO;
 import net.mcreator.plugin.PluginLoader;
 import net.mcreator.ui.workspace.resources.TextureType;
@@ -60,7 +60,7 @@ public class WorkspaceGeneratorSetup {
 			// close gradle connection so no files are locked
 			currentGenerator.close();
 		} else if (workspace.getWorkspaceSettings().getCurrentGenerator() != null) {
-			LOG.warn("Cleaning up generator for switch to " + newGenerator.getGeneratorName()
+			LOG.info("Cleaning up generator for switch to " + newGenerator.getGeneratorName()
 					+ " from non-existent generator " + workspace.getWorkspaceSettings().getCurrentGenerator());
 		}
 
@@ -89,7 +89,8 @@ public class WorkspaceGeneratorSetup {
 
 		AbstractFolderStructure folderStructure = AbstractFolderStructure.getFolderStructure(workspace);
 
-		LOG.info("Moving files to new locations while assuming " + folderStructure.getClass().getSimpleName() + " for the generator converting from");
+		LOG.info("Moving files to new locations while assuming " + folderStructure.getClass().getSimpleName()
+				+ " for the generator converting from");
 
 		// move folders to the new locations, starting from more nested folders down
 		moveFilesToAnotherDir(folderStructure.getStructuresDir(),
@@ -123,7 +124,6 @@ public class WorkspaceGeneratorSetup {
 	}
 
 	public static void setupWorkspaceBase(Workspace workspace) {
-		DefaultFreemarkerConfiguration configuration = new DefaultFreemarkerConfiguration();
 		Map<String, Object> dataModel = new BaseDataModelProvider(workspace.getGenerator()).provide();
 
 		Set<String> fileNames = PluginLoader.INSTANCE.getResourcesInPackage(
@@ -136,17 +136,17 @@ public class WorkspaceGeneratorSetup {
 							file.replace(workspace.getGenerator().getGeneratorName() + "/workspacebase", ""));
 					if (file.endsWith(".gradle") || file.endsWith(".properties") || file.endsWith(".txt")) {
 						String contents = IOUtils.toString(stream, StandardCharsets.UTF_8);
-						Template freemarkerTemplate = new Template("", contents, configuration);
+						Template freemarkerTemplate = InlineTemplatesHandler.getTemplate(contents);
 						StringWriter stringWriter = new StringWriter();
-						freemarkerTemplate.process(dataModel, stringWriter, configuration.getBeansWrapper());
+						freemarkerTemplate.process(dataModel, stringWriter,
+								InlineTemplatesHandler.getConfiguration().getBeansWrapper());
 						FileIO.writeStringToFile(stringWriter.getBuffer().toString(), outFile);
 					} else {
 						FileUtils.copyInputStreamToFile(stream, outFile);
 					}
 				}
 			} catch (Exception e) {
-				LOG.error(file);
-				LOG.error(e.getMessage(), e);
+				LOG.error(file, e);
 			}
 		}
 	}
@@ -160,7 +160,7 @@ public class WorkspaceGeneratorSetup {
 				if (generator.getFullGeneratorVersion().equals(properties.getProperty("buildFileVersion")))
 					return false;
 			} catch (IOException e) {
-				LOG.error(e.getMessage(), e);
+				LOG.error(setupFile, e);
 			}
 		}
 		return true;

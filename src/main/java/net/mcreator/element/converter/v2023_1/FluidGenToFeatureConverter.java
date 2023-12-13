@@ -19,13 +19,16 @@
 
 package net.mcreator.element.converter.v2023_1;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.mcreator.element.GeneratableElement;
 import net.mcreator.element.ModElementType;
+import net.mcreator.element.converter.ConverterUtils;
 import net.mcreator.element.converter.IConverter;
 import net.mcreator.element.parts.BiomeEntry;
 import net.mcreator.element.parts.procedure.Procedure;
+import net.mcreator.element.types.Dimension;
 import net.mcreator.element.types.Feature;
 import net.mcreator.workspace.Workspace;
 import net.mcreator.workspace.elements.FolderElement;
@@ -41,12 +44,14 @@ public class FluidGenToFeatureConverter implements IConverter {
 	@Override
 	public GeneratableElement convert(Workspace workspace, GeneratableElement input, JsonElement jsonElementInput) {
 		try {
+			String modElementName = input.getModElement().getName();
 			JsonObject fluid = jsonElementInput.getAsJsonObject().getAsJsonObject("definition");
+
 			// If the list of restriction dimensions is empty, there's no feature to convert
 			if (fluid.get("spawnWorldTypes") != null && !fluid.getAsJsonArray("spawnWorldTypes").isEmpty()) {
-				String modElementName = input.getModElement().getName();
-				Feature feature = new Feature(
-						new ModElement(workspace, modElementName + "Feature", ModElementType.FEATURE));
+				Feature feature = new Feature(new ModElement(workspace,
+						ConverterUtils.findSuitableModElementName(workspace, modElementName + "Feature"),
+						ModElementType.FEATURE));
 
 				int rarity = 5;
 				if (fluid.get("frequencyOnChunks") != null) {
@@ -55,17 +60,33 @@ public class FluidGenToFeatureConverter implements IConverter {
 
 				feature.generationStep = "LAKES";
 
-				if (fluid.get("spawnWorldTypes") != null) {
-					fluid.getAsJsonArray("spawnWorldTypes").iterator()
-							.forEachRemaining(e -> feature.restrictionDimensions.add(e.getAsString()));
-				} else {
-					feature.restrictionDimensions.add("Surface");
-				}
-
 				if (fluid.get("restrictionBiomes") != null && !fluid.getAsJsonArray("restrictionBiomes").isEmpty()) {
 					fluid.getAsJsonArray("restrictionBiomes").iterator().forEachRemaining(
 							e -> feature.restrictionBiomes.add(
 									new BiomeEntry(workspace, e.getAsJsonObject().get("value").getAsString())));
+				} else if (fluid.get("spawnWorldTypes") != null) {
+					JsonArray spawnWorldTypes = fluid.get("spawnWorldTypes").getAsJsonArray();
+					if (spawnWorldTypes.size() == 1) {
+						String spawnWorldType = spawnWorldTypes.get(0).getAsString();
+						if (spawnWorldType.equals("Surface")) {
+							feature.restrictionBiomes.add(new BiomeEntry(workspace, "#is_overworld"));
+						} else if (spawnWorldType.equals("Nether")) {
+							feature.restrictionBiomes.add(new BiomeEntry(workspace, "#is_nether"));
+						} else if (spawnWorldType.equals("End")) {
+							feature.restrictionBiomes.add(new BiomeEntry(workspace, "#is_end"));
+						} else if (spawnWorldType.startsWith("CUSTOM:")) {
+							ModElement modElement = workspace.getModElementByName(
+									spawnWorldType.replaceFirst("CUSTOM:", ""));
+							if (modElement != null) {
+								GeneratableElement generatableElement = modElement.getGeneratableElement();
+								if (generatableElement instanceof Dimension dimension) {
+									feature.restrictionBiomes.addAll(dimension.biomesInDimension);
+								}
+							}
+						}
+					}
+				} else {
+					feature.restrictionBiomes.add(new BiomeEntry(workspace, "#is_overworld"));
 				}
 
 				if (fluid.get("generateCondition") != null) {

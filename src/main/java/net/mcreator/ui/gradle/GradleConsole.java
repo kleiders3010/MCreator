@@ -37,6 +37,7 @@ import net.mcreator.ui.ide.ProjectFileOpener;
 import net.mcreator.ui.init.L10N;
 import net.mcreator.ui.init.UIRES;
 import net.mcreator.ui.laf.SlickDarkScrollBarUI;
+import net.mcreator.ui.laf.themes.Theme;
 import net.mcreator.util.HtmlUtils;
 import net.mcreator.util.math.TimeUtils;
 import org.apache.logging.log4j.LogManager;
@@ -112,7 +113,8 @@ public class GradleConsole extends JPanel {
 					try {
 						ProjectJarManager jarManager = ref.getGenerator().getProjectJarManager();
 						if (jarManager != null) {
-							if (fileurl.contains("/")) { // we don't have just FQDN but also module definition which we need to remove
+							if (fileurl.contains(
+									"/")) { // we don't have just FQDN but also module definition which we need to remove
 								fileurl = fileurl.substring(fileurl.lastIndexOf("/") + 1);
 							}
 
@@ -139,17 +141,16 @@ public class GradleConsole extends JPanel {
 		JScrollPane aae = new JScrollPane(pan, ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS,
 				ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
 
-		aae.getVerticalScrollBar().setUI(new SlickDarkScrollBarUI((Color) UIManager.get("MCreatorLAF.BLACK_ACCENT"),
-				(Color) UIManager.get("MCreatorLAF.DARK_ACCENT"), aae.getVerticalScrollBar()));
+		aae.getVerticalScrollBar().setUI(new SlickDarkScrollBarUI(Theme.current().getSecondAltBackgroundColor(),
+				Theme.current().getBackgroundColor(), aae.getVerticalScrollBar()));
 		aae.getVerticalScrollBar().setPreferredSize(new Dimension(7, 0));
-		aae.getHorizontalScrollBar().setUI(new SlickDarkScrollBarUI((Color) UIManager.get("MCreatorLAF.BLACK_ACCENT"),
-				(Color) UIManager.get("MCreatorLAF.DARK_ACCENT"), aae.getHorizontalScrollBar()));
+		aae.getHorizontalScrollBar().setUI(new SlickDarkScrollBarUI(Theme.current().getSecondAltBackgroundColor(),
+				Theme.current().getBackgroundColor(), aae.getHorizontalScrollBar()));
 		aae.getHorizontalScrollBar().setPreferredSize(new Dimension(0, 7));
-		aae.setBorder(BorderFactory.createMatteBorder(0, 10, 0, 0, (Color) UIManager.get("MCreatorLAF.BLACK_ACCENT")));
-		aae.setBackground((Color) UIManager.get("MCreatorLAF.BLACK_ACCENT"));
+		aae.setBorder(BorderFactory.createMatteBorder(0, 10, 0, 0, Theme.current().getSecondAltBackgroundColor()));
+		aae.setBackground(Theme.current().getSecondAltBackgroundColor());
 
-		holder.setBorder(
-				BorderFactory.createMatteBorder(0, 5, 0, 0, (Color) UIManager.get("MCreatorLAF.BLACK_ACCENT")));
+		holder.setBorder(BorderFactory.createMatteBorder(0, 5, 0, 0, Theme.current().getSecondAltBackgroundColor()));
 
 		searchBar.setVisible(false);
 
@@ -171,7 +172,7 @@ public class GradleConsole extends JPanel {
 
 		JToolBar options = new JToolBar(null, SwingConstants.VERTICAL);
 		options.setFloatable(false);
-		options.setBackground((Color) UIManager.get("MCreatorLAF.BLACK_ACCENT"));
+		options.setBackground(Theme.current().getSecondAltBackgroundColor());
 
 		searchen.setToolTipText(L10N.t("dialog.gradle_console.search"));
 		searchen.setCursor(new Cursor(Cursor.HAND_CURSOR));
@@ -247,7 +248,7 @@ public class GradleConsole extends JPanel {
 
 		holder.add("West", options);
 
-		holder.setBackground((Color) UIManager.get("MCreatorLAF.BLACK_ACCENT"));
+		holder.setBackground(Theme.current().getSecondAltBackgroundColor());
 		add("Center", holder);
 
 		searchen.addChangeListener(e -> searchBar.setVisible(searchen.isSelected()));
@@ -467,7 +468,8 @@ public class GradleConsole extends JPanel {
 								int reply = JOptionPane.showOptionDialog(ref,
 										L10N.t("dialog.gradle_console.gradle_caches_corrupted_message"),
 										L10N.t("dialog.gradle_console.gradle_caches_corrupted_title"),
-										JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE, null, options, options[0]);
+										JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE, null, options,
+										options[0]);
 								if (reply == 0 || reply == 1) {
 									taskComplete(GradleErrorCodes.GRADLE_CACHEDATA_ERROR);
 
@@ -564,7 +566,7 @@ public class GradleConsole extends JPanel {
 						listener -> listener.taskFinished(new GradleTaskResult("", mcreatorGradleStatus)));
 
 				// reload mods view to display errors
-				ref.mv.updateMods();
+				ref.mv.reloadElementsInCurrentTab();
 			}
 		});
 	}
@@ -595,7 +597,7 @@ public class GradleConsole extends JPanel {
 	}
 
 	public void append(String text) {
-		append(text, (Color) UIManager.get("MCreatorLAF.BRIGHT_COLOR"));
+		append(text, Theme.current().getForegroundColor());
 	}
 
 	private Color textAccent = null;
@@ -603,8 +605,8 @@ public class GradleConsole extends JPanel {
 	private void appendAutoColor(String text) {
 		pan.beginTransaction();
 
-		if (!text.equals("")) {
-			Color c = (Color) UIManager.get("MCreatorLAF.BRIGHT_COLOR");
+		if (!text.isEmpty()) {
+			Color c = Theme.current().getForegroundColor();
 
 			if (!text.endsWith("\n"))
 				text = text + "\n";
@@ -680,7 +682,7 @@ public class GradleConsole extends JPanel {
 						StyleConstants.setFontSize(keyWord, 6);
 
 					StyleConstants.setForeground(keyWord, c2);
-					StyleConstants.setBackground(keyWord, (Color) UIManager.get("MCreatorLAF.BLACK_ACCENT"));
+					StyleConstants.setBackground(keyWord, Theme.current().getSecondAltBackgroundColor());
 
 					if (bracketText.matches("\\[(\\w{2}\\.)+\\w+/\\w+]:")) {
 						pan.insertString(bracketText.replaceAll("(\\w{2}\\.)", ""), keyWord);
@@ -722,13 +724,13 @@ public class GradleConsole extends JPanel {
 	}
 
 	private void appendErrorWithCodeLine(String text) {
-		if (!text.equals("")) {
+		if (!text.isEmpty()) {
 			String err = text.replaceAll(": error:.*", "");
 			String othr = text.replaceAll(".+\\.java:\\d+", "") + "\n";
 			SimpleAttributeSet keyWord = new SimpleAttributeSet();
 			StyleConstants.setFontSize(keyWord, 9);
 			StyleConstants.setForeground(keyWord, new Color(0xF98771));
-			StyleConstants.setBackground(keyWord, (Color) UIManager.get("MCreatorLAF.BLACK_ACCENT"));
+			StyleConstants.setBackground(keyWord, Theme.current().getSecondAltBackgroundColor());
 			pan.insertLink(err.trim(), err.trim(), othr, keyWord);
 		}
 		scrollToBottom();
@@ -737,7 +739,7 @@ public class GradleConsole extends JPanel {
 	private final Pattern jpattern = Pattern.compile("\\((.+?)\\.java:\\d+\\)");
 
 	private void appendErrorWithCodeLine2(String text) {
-		if (!text.equals("")) {
+		if (!text.isEmpty()) {
 			try {
 				Matcher matcher = jpattern.matcher(text);
 				matcher.find();
@@ -748,7 +750,7 @@ public class GradleConsole extends JPanel {
 				SimpleAttributeSet keyWord = new SimpleAttributeSet();
 				StyleConstants.setFontSize(keyWord, 9);
 				StyleConstants.setForeground(keyWord, Color.white);
-				StyleConstants.setBackground(keyWord, (Color) UIManager.get("MCreatorLAF.BLACK_ACCENT"));
+				StyleConstants.setBackground(keyWord, Theme.current().getSecondAltBackgroundColor());
 				pan.insertString(text.split("\\(")[0] + "(", keyWord);
 				StyleConstants.setForeground(keyWord, new Color(0xE0F3A9));
 				pan.insertLink(packageName + "." + crashClassName + ":" + classLine,
@@ -764,15 +766,15 @@ public class GradleConsole extends JPanel {
 	}
 
 	public void append(String text, Color c, boolean a) {
-		if (!text.equals("")) {
+		if (!text.isEmpty()) {
 			if (!text.endsWith("\n"))
 				text = text + "\n";
 			SimpleAttributeSet keyWord = new SimpleAttributeSet();
 			StyleConstants.setFontSize(keyWord, 9);
 			StyleConstants.setItalic(keyWord, a);
 			StyleConstants.setForeground(keyWord, c);
-			StyleConstants.setBackground(keyWord, (Color) UIManager.get("MCreatorLAF.BLACK_ACCENT"));
-			pan.insertString("" + text, keyWord);
+			StyleConstants.setBackground(keyWord, Theme.current().getSecondAltBackgroundColor());
+			pan.insertString(text, keyWord);
 		}
 		scrollToBottom();
 	}

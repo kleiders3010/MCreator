@@ -47,12 +47,12 @@ public class TextureImportDialogs {
 	 * @param message  <p>The message to display on the option dialog</p>
 	 */
 	public static void importSingleTexture(final MCreator mcreator, File file, String message) {
-		Object[] options = TextureType.getTypes(false);
+		TextureType[] options = TextureType.getSupportedTypes(mcreator.getWorkspace(), false);
 		int n = JOptionPane.showOptionDialog(mcreator, message, L10N.t("dialog.textures_import.texture_type"),
 				JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
 
 		if (n >= 0) {
-			saveTextures(mcreator, TextureType.getTextureType(n, false), new File[] { file });
+			saveTextures(mcreator, options[n], new File[] { file });
 		}
 	}
 
@@ -68,7 +68,7 @@ public class TextureImportDialogs {
 		neno.add(L10N.label("dialog.textures_import.armor_part_two"));
 		neno.add(p2);
 		p1.addActionListener(event -> {
-			File[] f1a = FileDialogs.getFileChooserDialog(mcreator, FileChooserType.OPEN, false,
+			File[] f1a = FileDialogs.getFileChooserDialog(mcreator, FileChooserType.OPEN, false, null,
 					new FileChooser.ExtensionFilter("Armor layer 1 texture files", "*layer_1*.png"));
 			if (f1a != null && f1a.length > 0)
 				f1 = f1a[0];
@@ -79,7 +79,7 @@ public class TextureImportDialogs {
 						f1.getName().toLowerCase(Locale.ENGLISH).replace("layer_1", "")) + " P1");
 		});
 		p2.addActionListener(event -> {
-			File[] f2a = FileDialogs.getFileChooserDialog(mcreator, FileChooserType.OPEN, false,
+			File[] f2a = FileDialogs.getFileChooserDialog(mcreator, FileChooserType.OPEN, false, null,
 					new FileChooser.ExtensionFilter("Armor layer 2 texture files", "*layer_2*.png"));
 			if (f2a != null && f2a.length > 0)
 				f2 = f2a[0];

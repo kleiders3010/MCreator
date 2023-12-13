@@ -29,6 +29,7 @@ import net.mcreator.ui.component.util.PanelUtils;
 import net.mcreator.ui.dialogs.MCreatorDialog;
 import net.mcreator.ui.init.L10N;
 import net.mcreator.ui.init.UIRES;
+import net.mcreator.ui.laf.themes.Theme;
 import net.mcreator.ui.validation.AggregatedValidationResult;
 import net.mcreator.ui.workspace.selector.WorkspaceSelector;
 import net.mcreator.util.DesktopUtils;
@@ -54,7 +55,9 @@ public class NewWorkspaceDialog extends MCreatorDialog {
 		super(w, L10N.t("dialog.new_workspace.title"), true);
 
 		AbstractWorkspacePanel forgeWorkspacePanel = new ForgeWorkspacePanel(this);
+		AbstractWorkspacePanel neoforgeWorkspacePanel = new NeoForgeWorkspacePanel(this);
 		AbstractWorkspacePanel fabricWorkspacePanel = new FabricWorkspacePanel(this);
+		AbstractWorkspacePanel quiltWorkspacePanel = new QuiltWorkspacePanel(this);
 		AbstractWorkspacePanel spigotWorkspacePanel = new SpigotWorkspacePanel(this);
 		AbstractWorkspacePanel datapackWorkspacePanel = new DatapackWorkspacePanel(this);
 		AbstractWorkspacePanel addonWorkspacePanel = new AddonWorkspacePanel(this);
@@ -106,14 +109,15 @@ public class NewWorkspaceDialog extends MCreatorDialog {
 				MCreatorApplication.SERVER_DOMAIN + "/wiki/create-new-workspace-window"));
 
 		workspacePanels.add("forge", PanelUtils.pullElementUp(forgeWorkspacePanel));
+		workspacePanels.add("neoforge", PanelUtils.pullElementUp(neoforgeWorkspacePanel));
 		workspacePanels.add("fabric", PanelUtils.pullElementUp(fabricWorkspacePanel));
+		workspacePanels.add("quilt", PanelUtils.pullElementUp(quiltWorkspacePanel));
 		workspacePanels.add("spigot", PanelUtils.pullElementUp(spigotWorkspacePanel));
 		workspacePanels.add("datapack", PanelUtils.pullElementUp(datapackWorkspacePanel));
 		workspacePanels.add("addon", PanelUtils.pullElementUp(addonWorkspacePanel));
 
 		JComponent center = PanelUtils.centerInPanel(workspacePanels);
-		center.setBorder(
-				BorderFactory.createMatteBorder(1, 0, 0, 0, (Color) UIManager.get("MCreatorLAF.LIGHT_ACCENT")));
+		center.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, Theme.current().getAltBackgroundColor()));
 
 		add("Center", center);
 
@@ -128,10 +132,10 @@ public class NewWorkspaceDialog extends MCreatorDialog {
 
 		ButtonGroup buttonGroup = new ButtonGroup();
 
-		JToggleButton forge = new JToggleButton(L10N.t("dialog.new_workspace.forge.toogle"), UIRES.get("16px.forge"));
+		JToggleButton forge = new JToggleButton(L10N.t("dialog.new_workspace.forge.toggle"), UIRES.get("16px.forge"));
 		forge.setHorizontalAlignment(SwingConstants.LEFT);
 		forge.setBorder(BorderFactory.createCompoundBorder(
-				BorderFactory.createMatteBorder(0, 0, 1, 0, (Color) UIManager.get("MCreatorLAF.LIGHT_ACCENT")),
+				BorderFactory.createMatteBorder(0, 0, 1, 0, Theme.current().getAltBackgroundColor()),
 				BorderFactory.createEmptyBorder(8, 8, 8, 30)));
 		buttonGroup.add(forge);
 		forge.addActionListener(e -> {
@@ -139,11 +143,23 @@ public class NewWorkspaceDialog extends MCreatorDialog {
 			cardLayout.show(workspacePanels, "forge");
 		});
 
+		JToggleButton neoforge = new JToggleButton(L10N.t("dialog.new_workspace.neoforge.toggle"),
+				UIRES.get("16px.neoforge"));
+		neoforge.setHorizontalAlignment(SwingConstants.LEFT);
+		neoforge.setBorder(BorderFactory.createCompoundBorder(
+				BorderFactory.createMatteBorder(0, 0, 1, 0, Theme.current().getAltBackgroundColor()),
+				BorderFactory.createEmptyBorder(8, 8, 8, 30)));
+		buttonGroup.add(neoforge);
+		neoforge.addActionListener(e -> {
+			current = neoforgeWorkspacePanel;
+			cardLayout.show(workspacePanels, "neoforge");
+		});
+
 		JToggleButton fabric = new JToggleButton(L10N.t("dialog.new_workspace.fabric.toggle"),
 				UIRES.get("16px.fabric"));
 		fabric.setHorizontalAlignment(SwingConstants.LEFT);
 		fabric.setBorder(BorderFactory.createCompoundBorder(
-				BorderFactory.createMatteBorder(0, 0, 1, 0, (Color) UIManager.get("MCreatorLAF.LIGHT_ACCENT")),
+				BorderFactory.createMatteBorder(0, 0, 1, 0, Theme.current().getAltBackgroundColor()),
 				BorderFactory.createEmptyBorder(8, 8, 8, 30)));
 		buttonGroup.add(fabric);
 		fabric.addActionListener(e -> {
@@ -151,11 +167,22 @@ public class NewWorkspaceDialog extends MCreatorDialog {
 			cardLayout.show(workspacePanels, "fabric");
 		});
 
+		JToggleButton quilt = new JToggleButton(L10N.t("dialog.new_workspace.quilt.toggle"), UIRES.get("16px.quilt"));
+		quilt.setHorizontalAlignment(SwingConstants.LEFT);
+		quilt.setBorder(BorderFactory.createCompoundBorder(
+				BorderFactory.createMatteBorder(0, 0, 1, 0, Theme.current().getAltBackgroundColor()),
+				BorderFactory.createEmptyBorder(8, 8, 8, 30)));
+		buttonGroup.add(quilt);
+		quilt.addActionListener(e -> {
+			current = quiltWorkspacePanel;
+			cardLayout.show(workspacePanels, "quilt");
+		});
+
 		JToggleButton spigot = new JToggleButton(L10N.t("dialog.new_workspace.spigot.toggle"),
 				UIRES.get("16px.spigot"));
 		spigot.setHorizontalAlignment(SwingConstants.LEFT);
 		spigot.setBorder(BorderFactory.createCompoundBorder(
-				BorderFactory.createMatteBorder(0, 0, 1, 0, (Color) UIManager.get("MCreatorLAF.LIGHT_ACCENT")),
+				BorderFactory.createMatteBorder(0, 0, 1, 0, Theme.current().getAltBackgroundColor()),
 				BorderFactory.createEmptyBorder(8, 8, 8, 30)));
 		buttonGroup.add(spigot);
 		spigot.addActionListener(e -> {
@@ -167,7 +194,7 @@ public class NewWorkspaceDialog extends MCreatorDialog {
 				UIRES.get("16px.datapack"));
 		datapack.setHorizontalAlignment(SwingConstants.LEFT);
 		datapack.setBorder(BorderFactory.createCompoundBorder(
-				BorderFactory.createMatteBorder(0, 0, 1, 0, (Color) UIManager.get("MCreatorLAF.LIGHT_ACCENT")),
+				BorderFactory.createMatteBorder(0, 0, 1, 0, Theme.current().getAltBackgroundColor()),
 				BorderFactory.createEmptyBorder(8, 8, 8, 30)));
 		buttonGroup.add(datapack);
 		datapack.addActionListener(e -> {
@@ -178,7 +205,7 @@ public class NewWorkspaceDialog extends MCreatorDialog {
 		JToggleButton addon = new JToggleButton(L10N.t("dialog.new_workspace.addon.toggle"), UIRES.get("16px.bedrock"));
 		addon.setHorizontalAlignment(SwingConstants.LEFT);
 		addon.setBorder(BorderFactory.createCompoundBorder(
-				BorderFactory.createMatteBorder(0, 0, 1, 0, (Color) UIManager.get("MCreatorLAF.LIGHT_ACCENT")),
+				BorderFactory.createMatteBorder(0, 0, 1, 0, Theme.current().getAltBackgroundColor()),
 				BorderFactory.createEmptyBorder(8, 8, 8, 30)));
 		buttonGroup.add(addon);
 		addon.addActionListener(e -> {
@@ -188,12 +215,14 @@ public class NewWorkspaceDialog extends MCreatorDialog {
 
 		JLabel wt = L10N.label("dialog.new_workspace.type");
 		ComponentUtils.deriveFont(wt, 10);
-		wt.setForeground((Color) UIManager.get("MCreatorLAF.GRAY_COLOR"));
+		wt.setForeground(Theme.current().getAltForegroundColor());
 		wt.setBorder(BorderFactory.createEmptyBorder(8, 8, 3, 30));
 
 		workspaceType.add(wt);
 		workspaceType.add(forge);
+		workspaceType.add(neoforge);
 		workspaceType.add(fabric);
+		workspaceType.add(quilt);
 		workspaceType.add(spigot);
 		workspaceType.add(addon);
 		workspaceType.add(datapack);
@@ -204,8 +233,18 @@ public class NewWorkspaceDialog extends MCreatorDialog {
 		}
 
 		if (Generator.GENERATOR_CACHE.values().stream()
+				.noneMatch(gc -> gc.getGeneratorFlavor() == GeneratorFlavor.NEOFORGE)) {
+			disableType(neoforge);
+		}
+
+		if (Generator.GENERATOR_CACHE.values().stream()
 				.noneMatch(gc -> gc.getGeneratorFlavor() == GeneratorFlavor.FABRIC)) {
 			disableType(fabric);
+		}
+
+		if (Generator.GENERATOR_CACHE.values().stream()
+				.noneMatch(gc -> gc.getGeneratorFlavor() == GeneratorFlavor.QUILT)) {
+			disableType(quilt);
 		}
 
 		if (Generator.GENERATOR_CACHE.values().stream()
@@ -224,8 +263,7 @@ public class NewWorkspaceDialog extends MCreatorDialog {
 		}
 
 		JComponent wrapPan = PanelUtils.northAndCenterElement(workspaceType, new JEmptyBox());
-		wrapPan.setBorder(
-				BorderFactory.createMatteBorder(1, 0, 0, 1, (Color) UIManager.get("MCreatorLAF.LIGHT_ACCENT")));
+		wrapPan.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 1, Theme.current().getAltBackgroundColor()));
 		add("West", wrapPan);
 
 		getRootPane().setDefaultButton(ok);
