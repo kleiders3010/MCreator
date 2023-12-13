@@ -86,7 +86,7 @@ public class PluginLoader extends URLClassLoader {
 
 		List<Plugin> pluginsLoadList = new ArrayList<>();
 		pluginsLoadList.addAll(listPluginsFromFolder(new File("./plugins/"), true));
-		pluginsLoadList.addAll(listPluginsFromFolder(UserFolderManager.getFileFromUserFolder("plugins"), false));
+		pluginsLoadList.addAll(listPluginsFromFolder(UserFolderManager.getFileFromUserFolder("vintageplugins"), false));
 
 		if (System.getenv("MCREATOR_PLUGINS_FOLDER") != null)
 			pluginsLoadList.addAll(listPluginsFromFolder(new File(System.getenv("MCREATOR_PLUGINS_FOLDER")), false));
