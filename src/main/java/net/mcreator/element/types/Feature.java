@@ -88,7 +88,7 @@ import java.util.List;
 	}
 
 	@Override public Collection<BaseType> getBaseTypesProvided() {
-		if (getModElement().getGenerator().getGeneratorConfiguration().getGeneratorFlavor() == GeneratorFlavor.FABRIC)
+		if (getModElement().getGenerator().getGeneratorConfiguration().getGeneratorFlavor() == GeneratorFlavor.VINTAGE)
 			return List.of(BaseType.FEATURE); // Fabric needs to be handled differently than Forge
 		else if (hasGenerationConditions())
 			return List.of(BaseType.FEATURE);

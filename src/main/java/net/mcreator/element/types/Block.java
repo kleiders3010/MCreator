@@ -342,7 +342,7 @@ import java.util.stream.Collectors;
 		List<BaseType> baseTypes = new ArrayList<>(List.of(BaseType.BLOCK, BaseType.ITEM));
 
 		if (generateFeature && getModElement().getGenerator().getGeneratorConfiguration().getGeneratorFlavor()
-				== GeneratorFlavor.FABRIC) // Fabric needs Java code to register feature generation
+				== GeneratorFlavor.VINTAGE) // Fabric needs Java code to register feature generation
 			baseTypes.add(BaseType.FEATURE);
 
 		if (hasInventory)

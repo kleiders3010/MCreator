@@ -46,8 +46,7 @@ public class GeneratorSelector {
 
 	public static final String covpfx = "dialog.generator_selector.coverage.";
 
-	private static final List<GeneratorFlavor> compatible1 = List.of(GeneratorFlavor.FORGE, GeneratorFlavor.FABRIC,
-			GeneratorFlavor.NEOFORGE, GeneratorFlavor.QUILT);
+	private static final List<GeneratorFlavor> compatible1 = List.of(GeneratorFlavor.VINTAGE);
 
 	/**
 	 * <p>Open a dialog window to select a {@link Generator} from the loaded generators. </p>
@@ -107,9 +106,9 @@ public class GeneratorSelector {
 			addStatusLabel(L10N.t(covpfx + "json_models"), stats.getBaseCoverageInfo().get("model_json"),
 					baseCoverageInfo);
 
-			if (generatorConfiguration.getGeneratorFlavor() == GeneratorFlavor.FORGE)
+/*			if (generatorConfiguration.getGeneratorFlavor() == GeneratorFlavor.FORGE)
 				addStatusLabel(L10N.t(covpfx + "obj_models"), stats.getBaseCoverageInfo().get("model_obj"),
-						baseCoverageInfo);
+						baseCoverageInfo);*/
 
 			genStats.add(
 					PanelUtils.northAndCenterElement(L10N.label("dialog.generator_selector.features"), baseCoverageInfo,

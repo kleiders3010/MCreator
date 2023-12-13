@@ -1,0 +1,32 @@
+name: Mod for vintagestory
+status: stable
+buildfileversion: 1.0
+
+import:
+  - datapack-vintage
+
+# gradle task definitions
+gradle:
+  export_file: "build/export/export.zip"
+
+# base generator roots
+source_root: "@WORKSPACEROOT/src/main/"
+res_root: "@SRCROOT"
+mod_assets_root: "@RESROOT/assets/@modid"
+mod_data_root: "@RESROOT/data/@modid"
+screen_textures_dir: "@MODASSETSROOT/textures/screens"
+
+#Texture locations
+block_textures_dir: "@MODASSETSROOT/textures/block"
+
+
+base_templates:
+  - template: modinfo.json.ftl
+    writer: json
+    name: "@SRCROOT/modinfo.json"
+    canLock: true
+
+language_file:
+  format: json
+  root_folder: "@MODASSETSROOT/lang/"
+  langfile_name: "en.json"

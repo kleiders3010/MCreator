@@ -1,0 +1,13 @@
+templates:
+  - template: block/blocktype.json.ftl
+    name: "@MODASSETSROOT/blocktypes/@registryname.json"
+#  - template blockblockentity.java.ftl
+#    condition hasInventory
+#    name @SRCROOT@BASEPACKAGEPATHblockentity@NAMEBlockEntity.java
+
+localizationkeys:
+  - key: block-@registryname-*
+    mapto: name
+  - key: block-@registryname
+    mapto: name
+#  - key <a href=\"handbooksearch://@registryname\">@registryname</a>

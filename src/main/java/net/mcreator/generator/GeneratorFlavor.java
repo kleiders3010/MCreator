@@ -27,13 +27,7 @@ import java.util.Locale;
 public enum GeneratorFlavor {
 
 	//@formatter:off
-	FORGE(BaseLanguage.JAVA),
-	FABRIC(BaseLanguage.JAVA),
-	SPIGOT(BaseLanguage.JAVA),
-	QUILT(BaseLanguage.JAVA),
-	NEOFORGE(BaseLanguage.JAVA),
-	DATAPACK(BaseLanguage.JSON),
-	ADDON(BaseLanguage.JSON),
+	VINTAGE(BaseLanguage.JSON),
 	UNKNOWN(null);
 	//@formatter:on
 
@@ -48,9 +42,7 @@ public enum GeneratorFlavor {
 	}
 
 	public ImageIcon getIcon() {
-		if (this == ADDON) {
-			return UIRES.get("16px.bedrock");
-		} else if (this == UNKNOWN) {
+		if (this == UNKNOWN) {
 			return new EmptyIcon.ImageIcon(16, 16);
 		}
 
